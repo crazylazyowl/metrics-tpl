@@ -1,5 +1,5 @@
 package metrics
 
-const GuageName = "guage"
+const GaugeName = "gauge"
 
 type Gauge float64

@@ -19,9 +19,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle("/", http.NotFoundHandler())
 	mux.Handle("/update/",
-		middleware.Methods([]string{http.MethodPost},
-			// 		middleware.ContentType("text/plain",
-			http.StripPrefix("/update/", http.HandlerFunc(api.Update))))
+		middleware.Methods([]string{http.MethodPost}, http.HandlerFunc(api.Update)))
 
 	http.ListenAndServe("localhost:8080", mux)
 }

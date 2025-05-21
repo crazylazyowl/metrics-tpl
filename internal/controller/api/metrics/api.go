@@ -16,9 +16,10 @@ func NewAPI(metrics *metrics.Usecase) *API {
 }
 
 func (api *API) Update(w http.ResponseWriter, r *http.Request) {
-	parts := strings.Split(r.URL.Path, "/")
+	path := strings.TrimPrefix(r.URL.Path, "/update/")
+	parts := strings.Split(path, "/")
 	if len(parts) != 3 {
-		http.Error(w, "invalid path", http.StatusBadRequest)
+		http.NotFound(w, r)
 		return
 	}
 

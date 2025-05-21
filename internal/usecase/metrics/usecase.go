@@ -26,7 +26,7 @@ func (u *Usecase) Update(mtype, mname, mvalue string) error {
 			return ErrBadMetricValue
 		}
 		return u.repo.UpdateCounter(mname, Counter(value))
-	case GuageName:
+	case GaugeName:
 		value, err := strconv.ParseFloat(mvalue, 64)
 		if err != nil {
 			return ErrBadMetricValue
