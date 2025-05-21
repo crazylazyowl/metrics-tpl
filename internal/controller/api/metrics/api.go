@@ -36,5 +36,5 @@ func (api *API) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(strings.Join(parts, "|")))
+	_, _ = w.Write([]byte(strings.Join(parts, "|")))
 }

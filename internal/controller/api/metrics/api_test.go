@@ -39,7 +39,7 @@ func TestAPI_Update(t *testing.T) {
 			rec := httptest.NewRecorder()
 			api.Update(rec, req)
 			resp := rec.Result()
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			require.Equal(t, tt.want.status, resp.StatusCode)
 		})
 	}

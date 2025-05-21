@@ -21,5 +21,5 @@ func main() {
 	mux.Handle("/update/",
 		middleware.Methods([]string{http.MethodPost}, http.HandlerFunc(api.Update)))
 
-	http.ListenAndServe("localhost:8080", mux)
+	_ = http.ListenAndServe("localhost:8080", mux)
 }
