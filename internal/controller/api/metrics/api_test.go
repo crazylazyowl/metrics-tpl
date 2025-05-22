@@ -8,39 +8,40 @@ import (
 	"github.com/crazylazyowl/metrics-tpl/internal/repository/memstorage"
 	"github.com/crazylazyowl/metrics-tpl/internal/usecase/metrics"
 
+	"github.com/go-resty/resty/v2"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestAPI_Update(t *testing.T) {
 	repository := memstorage.NewStorage()
 	usecase := metrics.NewUsecase(repository)
-	api := NewAPI(usecase)
+	router := NewRouter(usecase)
+	server := httptest.NewServer(router)
 
-	type args struct {
-		method   string
-		endpoint string
-	}
 	type want struct {
 		status int
 	}
 	tests := []struct {
-		name string
-		args args
-		want want
+		method   string
+		endpoint string
+		want     want
 	}{
-		{"404 - update counter", args{http.MethodPost, "/update/counter/"}, want{404}},
-		{"404 - update gauge", args{http.MethodPost, "/update/gauge/"}, want{404}},
-		{"200", args{http.MethodPost, "/update/gauge/testGauge/100"}, want{200}},
+		{http.MethodPost, "/update/counter/", want{http.StatusNotFound}},
+		{http.MethodPost, "/update/gauge/", want{http.StatusNotFound}},
+		{http.MethodPost, "/update/gauge/testGauge/100", want{http.StatusOK}},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(tt.args.method, tt.args.endpoint, nil)
-			rec := httptest.NewRecorder()
-			api.Update(rec, req)
-			resp := rec.Result()
-			defer func() { _ = resp.Body.Close() }()
-			require.Equal(t, tt.want.status, resp.StatusCode)
+		t.Run("", func(t *testing.T) {
+			req := resty.New().R()
+			req.Method = tt.method
+			req.URL = server.URL + tt.endpoint
+
+			resp, err := req.Send()
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.want.status, resp.StatusCode())
 		})
 	}
 }

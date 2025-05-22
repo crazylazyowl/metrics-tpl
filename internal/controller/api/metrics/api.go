@@ -2,9 +2,10 @@ package metrics
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/crazylazyowl/metrics-tpl/internal/usecase/metrics"
+
+	"github.com/go-chi/chi/v5"
 )
 
 type API struct {
@@ -16,14 +17,11 @@ func NewAPI(metrics *metrics.Usecase) *API {
 }
 
 func (api *API) Update(w http.ResponseWriter, r *http.Request) {
-	path := strings.TrimPrefix(r.URL.Path, "/update/")
-	parts := strings.Split(path, "/")
-	if len(parts) != 3 {
-		http.NotFound(w, r)
-		return
-	}
+	metricType := chi.URLParam(r, "metric_type")
+	metricName := chi.URLParam(r, "metric_name")
+	metricValue := chi.URLParam(r, "metric_value")
 
-	if err := api.metrics.Update(parts[0], parts[1], parts[2]); err != nil {
+	if err := api.metrics.Update(metricType, metricName, metricValue); err != nil {
 		switch err {
 		case metrics.ErrUnknownMetric:
 			http.Error(w, err.Error(), http.StatusNotFound)
@@ -36,5 +34,4 @@ func (api *API) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte(strings.Join(parts, "|")))
 }

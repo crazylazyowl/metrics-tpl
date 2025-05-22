@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	metricsAPI "github.com/crazylazyowl/metrics-tpl/internal/controller/api/metrics"
-	"github.com/crazylazyowl/metrics-tpl/internal/controller/middleware"
 	"github.com/crazylazyowl/metrics-tpl/internal/repository/memstorage"
 	metricsUsecase "github.com/crazylazyowl/metrics-tpl/internal/usecase/metrics"
 )
@@ -14,12 +13,7 @@ func main() {
 
 	usecase := metricsUsecase.NewUsecase(storage)
 
-	api := metricsAPI.NewAPI(usecase)
+	router := metricsAPI.NewRouter(usecase)
 
-	mux := http.NewServeMux()
-	mux.Handle("/", http.NotFoundHandler())
-	mux.Handle("/update/",
-		middleware.Methods([]string{http.MethodPost}, http.HandlerFunc(api.Update)))
-
-	_ = http.ListenAndServe("localhost:8080", mux)
+	_ = http.ListenAndServe("localhost:8080", router)
 }
