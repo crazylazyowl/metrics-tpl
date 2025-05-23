@@ -32,7 +32,7 @@ func (api *API) GetMetrics(w http.ResponseWriter, r *http.Request) {
 	}
 	sort.Strings(keys)
 	for _, key := range keys {
-		fmt.Fprintf(w, "- %s: %f<br>", key, gauges[key])
+		fmt.Fprintf(w, "- %s: %s<br>", key, gauges[key].String())
 	}
 
 	fmt.Fprint(w, "Counter: <br>")
@@ -75,7 +75,7 @@ func (api *API) GetMetric(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "%f", value)
+		fmt.Fprintf(w, value.String())
 		return
 	}
 
