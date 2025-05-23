@@ -75,7 +75,7 @@ func (api *API) GetMetric(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "%.3f", value)
+		fmt.Fprintf(w, "%.2f", value)
 		return
 	}
 

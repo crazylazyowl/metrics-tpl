@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAPI_Update(t *testing.T) {
+func TestAPI_UpdateMetric(t *testing.T) {
 	repository := memstorage.New()
 	usecase := metrics.New(repository)
 	router := NewRouter(usecase)
