@@ -13,7 +13,7 @@ type Usecase struct {
 	storage MetricsStorage
 }
 
-func NewUsecase(repo MetricsStorage) *Usecase {
+func New(repo MetricsStorage) *Usecase {
 	return &Usecase{storage: repo}
 }
 

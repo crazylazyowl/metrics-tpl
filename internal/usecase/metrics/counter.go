@@ -2,6 +2,8 @@ package metrics
 
 import "strconv"
 
+const CounterMetricType = "counter"
+
 type Counter int64
 
 func CounterFromString(value string) (Counter, error) {

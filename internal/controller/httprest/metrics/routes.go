@@ -17,17 +17,10 @@ func NewRouter(metrics *metrics.Usecase) http.Handler {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
-	r.Get("/", api.Metrics)
+	r.Get("/", api.GetMetrics)
 
-	r.Route("/value", func(r chi.Router) {
-		r.Get("/counter/{metric}", api.Counter)
-		r.Get("/gauge/{metric}", api.Gauge)
-	})
-
-	r.Route("/update", func(r chi.Router) {
-		r.Post("/counter/{metric}/{value}", api.UpdateCounter)
-		r.Post("/gauge/{metric}/{value}", api.UpdateGauge)
-	})
+	r.Get("/value/{type}/{metric}", api.GetMetric)
+	r.Post("/update/{type}/{metric}/{value}", api.UpdateMetric)
 
 	return r
 }

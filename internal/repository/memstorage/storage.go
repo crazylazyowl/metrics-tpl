@@ -11,7 +11,7 @@ type MemStorage struct {
 	gauges   gauges
 }
 
-func NewStorage() *MemStorage {
+func New() *MemStorage {
 	return &MemStorage{
 		counters: counters{m: make(map[string][]metrics.Counter)},
 		gauges:   gauges{m: make(map[string]metrics.Gauge)},

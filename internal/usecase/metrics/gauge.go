@@ -2,6 +2,8 @@ package metrics
 
 import "strconv"
 
+const GaugeMetricType = "gauge"
+
 type Gauge float64
 
 func GaugeFromString(value string) (Gauge, error) {

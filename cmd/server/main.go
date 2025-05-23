@@ -3,15 +3,15 @@ package main
 import (
 	"net/http"
 
-	metricsAPI "github.com/crazylazyowl/metrics-tpl/internal/controller/api/metrics"
+	metricsAPI "github.com/crazylazyowl/metrics-tpl/internal/controller/httprest/metrics"
 	"github.com/crazylazyowl/metrics-tpl/internal/repository/memstorage"
 	metricsUsecase "github.com/crazylazyowl/metrics-tpl/internal/usecase/metrics"
 )
 
 func main() {
-	storage := memstorage.NewStorage()
+	storage := memstorage.New()
 
-	usecase := metricsUsecase.NewUsecase(storage)
+	usecase := metricsUsecase.New(storage)
 
 	router := metricsAPI.NewRouter(usecase)
 

@@ -14,8 +14,8 @@ import (
 )
 
 func TestAPI_Update(t *testing.T) {
-	repository := memstorage.NewStorage()
-	usecase := metrics.NewUsecase(repository)
+	repository := memstorage.New()
+	usecase := metrics.New(repository)
 	router := NewRouter(usecase)
 	server := httptest.NewServer(router)
 
@@ -30,6 +30,7 @@ func TestAPI_Update(t *testing.T) {
 		{http.MethodPost, "/update/counter/", want{http.StatusNotFound}},
 		{http.MethodPost, "/update/gauge/", want{http.StatusNotFound}},
 		{http.MethodPost, "/update/gauge/testGauge/100", want{http.StatusOK}},
+		{http.MethodPost, "/update/unknown/testCounter/111", want{http.StatusBadRequest}},
 	}
 
 	for _, tt := range tests {
