@@ -13,24 +13,29 @@ import (
 )
 
 const (
-	baseURL    = "http://localhost:8080/update"
-	gaugeURL   = baseURL + "/gauge/%s/%f"
-	counterURL = baseURL + "/counter/%s/%d"
+	// baseURL    = "http://localhost:8080/update"
+	gaugeURL   = "http://%s/update/gauge/%s/%f"
+	counterURL = "http://%s/update/counter/%s/%d"
 )
 
 func main() {
+	args, err := parseCmdline()
+	if err != nil {
+		log.Fatalln(err)
+	}
+
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	_ = monitor(ctx)
+	_ = monitor(ctx, args)
 }
 
-func monitor(ctx context.Context) error {
+func monitor(ctx context.Context, args *arguments) error {
 	gauge := make(map[string]float64)
 	var counter uint64
 
-	pollTicker := time.NewTicker(2 * time.Second)
-	reportTicker := time.NewTicker(10 * time.Second)
+	pollTicker := time.NewTicker(time.Duration(args.pollInterval) * time.Second)
+	reportTicker := time.NewTicker(time.Duration(args.reportInterval) * time.Second)
 	for {
 		select {
 		case <-ctx.Done():
@@ -71,11 +76,11 @@ func monitor(ctx context.Context) error {
 		case <-reportTicker.C:
 			log.Println("send metrics")
 			for key, value := range gauge {
-				if err := report(fmt.Sprintf(gaugeURL, key, value)); err != nil {
+				if err := report(fmt.Sprintf(gaugeURL, args.hostport, key, value)); err != nil {
 					log.Printf("failed to send %s (%f); err=%v\n", key, value, err)
 				}
 			}
-			if err := report(fmt.Sprintf(counterURL, "PollCount", counter)); err != nil {
+			if err := report(fmt.Sprintf(counterURL, args.hostport, "PollCount", counter)); err != nil {
 				log.Printf("failed to send %s (%d); err=%v\n", "PollCount", counter, err)
 			}
 		}

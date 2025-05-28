@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net/http"
 
 	metricsAPI "github.com/crazylazyowl/metrics-tpl/internal/controller/httprest/metrics"
@@ -9,11 +10,16 @@ import (
 )
 
 func main() {
+	args, err := parseCmdline()
+	if err != nil {
+		log.Fatalln(err)
+	}
+
 	storage := memstorage.New()
 
 	usecase := metricsUsecase.New(storage)
 
 	router := metricsAPI.NewRouter(usecase)
 
-	_ = http.ListenAndServe("localhost:8080", router)
+	_ = http.ListenAndServe(args.hostport, router)
 }
