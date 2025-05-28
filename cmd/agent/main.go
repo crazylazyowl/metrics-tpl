@@ -19,7 +19,7 @@ const (
 )
 
 func main() {
-	args, err := parseCmdline()
+	conf, err := loadConfig()
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -27,15 +27,15 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	_ = monitor(ctx, args)
+	_ = monitor(ctx, conf)
 }
 
-func monitor(ctx context.Context, args *arguments) error {
+func monitor(ctx context.Context, conf *config) error {
 	gauge := make(map[string]float64)
 	var counter uint64
 
-	pollTicker := time.NewTicker(time.Duration(args.pollInterval) * time.Second)
-	reportTicker := time.NewTicker(time.Duration(args.reportInterval) * time.Second)
+	pollTicker := time.NewTicker(time.Duration(conf.pollInterval) * time.Second)
+	reportTicker := time.NewTicker(time.Duration(conf.reportInterval) * time.Second)
 	for {
 		select {
 		case <-ctx.Done():
@@ -76,11 +76,11 @@ func monitor(ctx context.Context, args *arguments) error {
 		case <-reportTicker.C:
 			log.Println("send metrics")
 			for key, value := range gauge {
-				if err := report(fmt.Sprintf(gaugeURL, args.hostport, key, value)); err != nil {
+				if err := report(fmt.Sprintf(gaugeURL, conf.address, key, value)); err != nil {
 					log.Printf("failed to send %s (%f); err=%v\n", key, value, err)
 				}
 			}
-			if err := report(fmt.Sprintf(counterURL, args.hostport, "PollCount", counter)); err != nil {
+			if err := report(fmt.Sprintf(counterURL, conf.address, "PollCount", counter)); err != nil {
 				log.Printf("failed to send %s (%d); err=%v\n", "PollCount", counter, err)
 			}
 		}
