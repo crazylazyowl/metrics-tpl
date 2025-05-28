@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	args, err := parseCmdline()
+	args, err := loadConfig()
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -21,5 +21,5 @@ func main() {
 
 	router := metricsAPI.NewRouter(usecase)
 
-	_ = http.ListenAndServe(args.hostport, router)
+	_ = http.ListenAndServe(args.address, router)
 }
