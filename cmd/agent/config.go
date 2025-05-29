@@ -19,6 +19,18 @@ type config struct {
 	pollInterval   int
 }
 
+func (conf *config) Validate() (err error) {
+	switch {
+	case conf.address == "":
+		err = errors.New("the address is not specified")
+	case conf.reportInterval < minInterval || conf.reportInterval > maxInterval:
+		err = fmt.Errorf("the report interval must be between %d and %d", minInterval, maxInterval)
+	case conf.pollInterval < minInterval || conf.pollInterval > maxInterval:
+		err = fmt.Errorf("the poll internval must be between %d and %d", minInterval, maxInterval)
+	}
+	return
+}
+
 func loadConfig() (conf *config, err error) {
 	conf = &config{}
 
@@ -47,14 +59,7 @@ func loadConfig() (conf *config, err error) {
 		conf.pollInterval = n
 	}
 
-	switch {
-	case conf.address == "":
-		err = errors.New("the address is not specified")
-	case conf.reportInterval < minInterval || conf.reportInterval > maxInterval:
-		err = fmt.Errorf("the report interval must be between %d and %d", minInterval, maxInterval)
-	case conf.pollInterval < minInterval || conf.pollInterval > maxInterval:
-		err = fmt.Errorf("the poll internval must be between %d and %d", minInterval, maxInterval)
-	}
+	err = conf.Validate()
 
 	return
 }
