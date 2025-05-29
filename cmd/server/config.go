@@ -10,6 +10,14 @@ type config struct {
 	address string
 }
 
+func (conf *config) Validate() (err error) {
+	switch {
+	case conf.address == "":
+		err = errors.New("the address is not specified")
+	}
+	return
+}
+
 func loadConfig() (conf *config, err error) {
 	conf = &config{}
 
@@ -20,10 +28,7 @@ func loadConfig() (conf *config, err error) {
 		conf.address = value
 	}
 
-	switch {
-	case conf.address == "":
-		err = errors.New("the address is not specified")
-	}
+	err = conf.Validate()
 
 	return
 }
