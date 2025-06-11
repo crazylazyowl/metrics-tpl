@@ -64,7 +64,7 @@ func (api *API) GetMetric(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if mtype == metrics.GaugeMetricType {
-		value, err := api.metrics.Gauge(chi.URLParam(r, "metric"))
+		value, err := api.metrics.Gauge(mname)
 		if err != nil {
 			switch err {
 			case metrics.ErrUnknownMetric:
