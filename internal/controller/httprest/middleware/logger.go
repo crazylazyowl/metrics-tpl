@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"log"
+	"github.com/rs/zerolog/log"
 )
 
 type LoggerResponseWriter struct {
@@ -28,9 +28,16 @@ func (rw *LoggerResponseWriter) WriteHeader(statusCode int) {
 func Logger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t := time.Now()
+
 		rw := LoggerResponseWriter{ResponseWriter: w}
 		next.ServeHTTP(&rw, r)
-		log.Printf("method=%s url=%s status=%d size=%d duration=%v\n",
-			r.Method, r.URL.String(), rw.custom.status, rw.custom.size, time.Since(t))
+
+		log.Info().
+			Str("method", r.Method).
+			Str("url", r.URL.String()).
+			Int("status", rw.custom.status).
+			Int("size", rw.custom.size).
+			Dur("duration", time.Since(t)).
+			Send()
 	})
 }
