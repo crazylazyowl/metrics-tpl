@@ -1,4 +1,4 @@
-package metrics
+package api
 
 import (
 	"fmt"
@@ -11,15 +11,15 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-type API struct {
+type MetricsAPI struct {
 	metrics *metrics.Usecase
 }
 
-func NewAPI(metrics *metrics.Usecase) *API {
-	return &API{metrics: metrics}
+func NewMetricsAPI(metrics *metrics.Usecase) *MetricsAPI {
+	return &MetricsAPI{metrics: metrics}
 }
 
-func (api *API) GetMetrics(w http.ResponseWriter, r *http.Request) {
+func (api *MetricsAPI) GetMetrics(w http.ResponseWriter, r *http.Request) {
 	metrics := api.metrics.GetMetrics()
 
 	w.WriteHeader(http.StatusOK)
@@ -44,7 +44,7 @@ func (api *API) GetMetrics(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "</body></html>")
 }
 
-func (api *API) GetMetric(w http.ResponseWriter, r *http.Request) {
+func (api *MetricsAPI) GetMetric(w http.ResponseWriter, r *http.Request) {
 	mtype := chi.URLParam(r, "type")
 	mname := chi.URLParam(r, "metric")
 
@@ -83,7 +83,7 @@ func (api *API) GetMetric(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, metrics.ErrUnknownMetricType.Error(), http.StatusBadRequest)
 }
 
-func (api *API) UpdateMetric(w http.ResponseWriter, r *http.Request) {
+func (api *MetricsAPI) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	mtype := chi.URLParam(r, "type")
 	mname := chi.URLParam(r, "metric")
 	mvalue := chi.URLParam(r, "value")
