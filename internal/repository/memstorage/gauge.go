@@ -15,12 +15,14 @@ type gauges struct {
 func (g *gauges) Copy() map[string]metrics.Gauge {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+
 	return maps.Clone(g.m)
 }
 
 func (g *gauges) Get(name string) metrics.Gauge {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
+
 	if _, ok := g.m[name]; !ok {
 		return 0 // TODO: 0 is a valid metric value
 	}
@@ -30,5 +32,6 @@ func (g *gauges) Get(name string) metrics.Gauge {
 func (g *gauges) Set(name string, value metrics.Gauge) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+
 	g.m[name] = value
 }
