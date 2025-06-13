@@ -13,20 +13,20 @@ type MemStorage struct {
 
 func New() *MemStorage {
 	return &MemStorage{
-		counters: counters{m: make(map[string][]metrics.Counter)},
-		gauges:   gauges{m: make(map[string]metrics.Gauge)},
+		counters: counters{m: make(map[string][]int64)},
+		gauges:   gauges{m: make(map[string]float64)},
 	}
 }
 
-func (s *MemStorage) GetCounters() map[string][]metrics.Counter {
+func (s *MemStorage) GetCounters() map[string][]int64 {
 	return s.counters.Copy()
 }
 
-func (s *MemStorage) GetGauges() map[string]metrics.Gauge {
+func (s *MemStorage) GetGauges() map[string]float64 {
 	return s.gauges.Copy()
 }
 
-func (s *MemStorage) GetCounter(name string) ([]metrics.Counter, error) {
+func (s *MemStorage) GetCounter(name string) ([]int64, error) {
 	values := s.counters.Get(name)
 	if values == nil {
 		return nil, metrics.ErrUnknownMetric
@@ -34,7 +34,7 @@ func (s *MemStorage) GetCounter(name string) ([]metrics.Counter, error) {
 	return values, nil
 }
 
-func (s *MemStorage) GetGauge(name string) (metrics.Gauge, error) {
+func (s *MemStorage) GetGauge(name string) (float64, error) {
 	value := s.gauges.Get(name)
 	if value == 0 {
 		return 0, metrics.ErrUnknownMetric
@@ -42,12 +42,12 @@ func (s *MemStorage) GetGauge(name string) (metrics.Gauge, error) {
 	return value, nil
 }
 
-func (s *MemStorage) AppendCounter(name string, value metrics.Counter) error {
+func (s *MemStorage) AppendCounter(name string, value int64) error {
 	s.counters.Append(name, value)
 	return nil
 }
 
-func (s *MemStorage) UpdateGauge(name string, value metrics.Gauge) error {
+func (s *MemStorage) UpdateGauge(name string, value float64) error {
 	s.gauges.Set(name, value)
 	return nil
 }

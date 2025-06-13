@@ -3,23 +3,21 @@ package memstorage
 import (
 	"maps"
 	"sync"
-
-	"github.com/crazylazyowl/metrics-tpl/internal/usecase/metrics"
 )
 
 type gauges struct {
-	m  map[string]metrics.Gauge
+	m  map[string]float64
 	mu sync.RWMutex
 }
 
-func (g *gauges) Copy() map[string]metrics.Gauge {
+func (g *gauges) Copy() map[string]float64 {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
 	return maps.Clone(g.m)
 }
 
-func (g *gauges) Get(name string) metrics.Gauge {
+func (g *gauges) Get(name string) float64 {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 
@@ -29,7 +27,7 @@ func (g *gauges) Get(name string) metrics.Gauge {
 	return g.m[name]
 }
 
-func (g *gauges) Set(name string, value metrics.Gauge) {
+func (g *gauges) Set(name string, value float64) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 

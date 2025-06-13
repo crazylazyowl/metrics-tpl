@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strconv"
 
 	"github.com/crazylazyowl/metrics-tpl/internal/usecase/metrics"
 
@@ -32,7 +33,7 @@ func (api *API) GetMetrics(w http.ResponseWriter, r *http.Request) {
 	}
 	sort.Strings(keys)
 	for _, key := range keys {
-		fmt.Fprintf(w, "- %s: %s<br>", key, metrics.Gauges[key].String())
+		fmt.Fprintf(w, "- %s: %s<br>", key, strconv.FormatFloat(metrics.Gauges[key], 'f', -1, 64))
 	}
 
 	fmt.Fprint(w, "Counter: <br>")
@@ -75,7 +76,7 @@ func (api *API) GetMetric(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "%s", value.String())
+		fmt.Fprintf(w, "%s", strconv.FormatFloat(value, 'f', -1, 64))
 		return
 	}
 
@@ -88,7 +89,7 @@ func (api *API) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	mvalue := chi.URLParam(r, "value")
 
 	if mtype == metrics.CounterMetricType {
-		counter, err := metrics.CounterFromString(mvalue)
+		counter, err := strconv.ParseInt(mvalue, 10, 64)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -102,7 +103,7 @@ func (api *API) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if mtype == metrics.GaugeMetricType {
-		gauge, err := metrics.GaugeFromString(mvalue)
+		gauge, err := strconv.ParseFloat(mvalue, 64)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
