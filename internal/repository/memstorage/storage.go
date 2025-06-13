@@ -42,7 +42,7 @@ func (s *MemStorage) GetGauge(name string) (metrics.Gauge, error) {
 	return value, nil
 }
 
-func (s *MemStorage) UpdateCounter(name string, value metrics.Counter) error {
+func (s *MemStorage) AppendCounter(name string, value metrics.Counter) error {
 	s.counters.Append(name, value)
 	return nil
 }

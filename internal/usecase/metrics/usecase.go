@@ -5,7 +5,7 @@ type MetricsStorage interface {
 	GetGauge(name string) (Gauge, error)
 	GetCounters() map[string][]Counter
 	GetGauges() map[string]Gauge
-	UpdateCounter(name string, value Counter) error
+	AppendCounter(name string, value Counter) error
 	UpdateGauge(name string, value Gauge) error
 }
 
@@ -17,11 +17,20 @@ func New(repo MetricsStorage) *Usecase {
 	return &Usecase{storage: repo}
 }
 
-func (u *Usecase) Metrics() (map[string][]Counter, map[string]Gauge) {
-	return u.storage.GetCounters(), u.storage.GetGauges()
+type Metrics struct {
+	Counters map[string][]Counter
+	Gauges   map[string]Gauge
 }
 
-func (u *Usecase) CounterSum(name string) (Counter, error) {
+func (u *Usecase) GetMetrics() Metrics {
+	return Metrics{
+		Counters: u.storage.GetCounters(),
+		Gauges:   u.storage.GetGauges(),
+	}
+}
+
+// GetCounterSum returns the sum of values for the specified counter.
+func (u *Usecase) GetCounterSum(name string) (Counter, error) {
 	values, err := u.storage.GetCounter(name)
 	if err != nil {
 		return 0, err
@@ -33,7 +42,8 @@ func (u *Usecase) CounterSum(name string) (Counter, error) {
 	return sum, nil
 }
 
-func (u *Usecase) Gauge(name string) (Gauge, error) {
+// GetGauge returnes the value for the specified gauge.
+func (u *Usecase) GetGauge(name string) (Gauge, error) {
 	value, err := u.storage.GetGauge(name)
 	if err != nil {
 		return 0, err
@@ -41,10 +51,12 @@ func (u *Usecase) Gauge(name string) (Gauge, error) {
 	return value, nil
 }
 
-func (u *Usecase) UpdateCounter(name string, value Counter) error {
-	return u.storage.UpdateCounter(name, value)
+// AppendCounter appends a new value to the specified counter's value list.
+func (u *Usecase) AppendCounter(name string, value Counter) error {
+	return u.storage.AppendCounter(name, value)
 }
 
+// UpdateGaute replaces the previous metric value with a new one.
 func (u *Usecase) UpdateGauge(name string, value Gauge) error {
 	return u.storage.UpdateGauge(name, value)
 }

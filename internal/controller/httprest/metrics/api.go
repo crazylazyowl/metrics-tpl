@@ -19,24 +19,24 @@ func NewAPI(metrics *metrics.Usecase) *API {
 }
 
 func (api *API) GetMetrics(w http.ResponseWriter, r *http.Request) {
-	counters, gauges := api.metrics.Metrics()
+	metrics := api.metrics.GetMetrics()
 
 	w.WriteHeader(http.StatusOK)
 
 	fmt.Fprint(w, "<html><head></head><body>")
 
 	fmt.Fprint(w, "Gauge: <br>")
-	keys := make([]string, 0, len(gauges))
-	for key := range gauges {
+	keys := make([]string, 0, len(metrics.Gauges))
+	for key := range metrics.Gauges {
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
 	for _, key := range keys {
-		fmt.Fprintf(w, "- %s: %s<br>", key, gauges[key].String())
+		fmt.Fprintf(w, "- %s: %s<br>", key, metrics.Gauges[key].String())
 	}
 
 	fmt.Fprint(w, "Counter: <br>")
-	for key, values := range counters {
+	for key, values := range metrics.Counters {
 		fmt.Fprintf(w, "- %s: %d<br>", key, values[0])
 	}
 
@@ -48,7 +48,7 @@ func (api *API) GetMetric(w http.ResponseWriter, r *http.Request) {
 	mname := chi.URLParam(r, "metric")
 
 	if mtype == metrics.CounterMetricType {
-		value, err := api.metrics.CounterSum(mname)
+		value, err := api.metrics.GetCounterSum(mname)
 		if err != nil {
 			switch err {
 			case metrics.ErrUnknownMetric:
@@ -64,7 +64,7 @@ func (api *API) GetMetric(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if mtype == metrics.GaugeMetricType {
-		value, err := api.metrics.Gauge(mname)
+		value, err := api.metrics.GetGauge(mname)
 		if err != nil {
 			switch err {
 			case metrics.ErrUnknownMetric:
@@ -93,7 +93,7 @@ func (api *API) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		if err := api.metrics.UpdateCounter(mname, counter); err != nil {
+		if err := api.metrics.AppendCounter(mname, counter); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
