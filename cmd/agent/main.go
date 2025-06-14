@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand/v2"
@@ -10,12 +12,15 @@ import (
 	"runtime"
 	"syscall"
 	"time"
+
+	"github.com/crazylazyowl/metrics-tpl/internal/controller/httprest/api"
+	"github.com/crazylazyowl/metrics-tpl/internal/usecase/metrics"
 )
 
 const (
-	// baseURL    = "http://localhost:8080/update"
-	gaugeURL   = "http://%s/update/gauge/%s/%f"
-	counterURL = "http://%s/update/counter/%s/%d"
+// baseURL    = "http://localhost:8080/update"
+// gaugeURL   = "http://%s/update/gauge/%s/%f"
+// counterURL = "http://%s/update/counter/%s/%d"
 )
 
 func main() {
@@ -32,8 +37,8 @@ func main() {
 
 func monitor(ctx context.Context, conf *config) error {
 	gauge := make(map[string]float64)
-	var counter uint64
-
+	var counter int64
+	url := fmt.Sprintf("http://%s/update/", conf.address)
 	pollTicker := time.NewTicker(time.Duration(conf.pollInterval) * time.Second)
 	reportTicker := time.NewTicker(time.Duration(conf.reportInterval) * time.Second)
 	for {
@@ -76,19 +81,37 @@ func monitor(ctx context.Context, conf *config) error {
 		case <-reportTicker.C:
 			log.Println("send metrics")
 			for key, value := range gauge {
-				if err := report(fmt.Sprintf(gaugeURL, conf.address, key, value)); err != nil {
+				metric := api.MetricUpdateReq{
+					ID:         key,
+					MetricType: metrics.GaugeMetricType,
+					Value:      &value,
+				}
+				if err := report(url, &metric); err != nil {
 					log.Printf("failed to send %s (%f); err=%v\n", key, value, err)
 				}
 			}
-			if err := report(fmt.Sprintf(counterURL, conf.address, "PollCount", counter)); err != nil {
+			metric := api.MetricUpdateReq{
+				ID:         "PollCount",
+				MetricType: metrics.CounterMetricType,
+				Delta:      &counter,
+			}
+			if err := report(url, &metric); err != nil {
 				log.Printf("failed to send %s (%d); err=%v\n", "PollCount", counter, err)
 			}
 		}
 	}
 }
 
-func report(url string) error {
-	resp, err := http.Post(url, "text/plain", nil)
+func report(url string, m *api.MetricUpdateReq) error {
+	if err := m.Validate(); err != nil {
+		return err
+	}
+	data, err := json.Marshal(m)
+	if err != nil {
+		return err
+	}
+	body := bytes.NewReader(data)
+	resp, err := http.Post(url, "application/json", body)
 	if err == nil {
 		resp.Body.Close()
 		if resp.StatusCode != 200 {
