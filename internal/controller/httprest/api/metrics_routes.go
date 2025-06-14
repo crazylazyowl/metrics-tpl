@@ -16,6 +16,6 @@ func NewMetricsRouter(metrics *metrics.Usecase) http.Handler {
 	r.Get("/value/{type}/{metric}", api.GetMetric)
 	r.Post("/update/{type}/{metric}/{value}", api.UpdateMetric)
 	r.With(middleware.JSONContentType).Post("/update/", api.UpdateMetricJSON)
-	r.With(middleware.JSONContentType).Get("/value/", api.GetMetricJSON)
+	r.With(middleware.JSONContentType).Post("/value/", api.GetMetricJSON)
 	return r
 }
