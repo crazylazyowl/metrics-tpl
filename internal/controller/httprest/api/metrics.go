@@ -53,7 +53,7 @@ func (api *MetricsAPI) GetMetric(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			switch err {
 			case metrics.ErrUnknownMetric:
-				http.Error(w, err.Error(), http.StatusNotFound)
+				errNotFound(w, err)
 			default:
 				errInternalServerError(w, err)
 			}
@@ -69,7 +69,7 @@ func (api *MetricsAPI) GetMetric(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			switch err {
 			case metrics.ErrUnknownMetric:
-				http.Error(w, err.Error(), http.StatusNotFound)
+				errNotFound(w, err)
 			default:
 				errInternalServerError(w, err)
 			}
@@ -137,7 +137,12 @@ func (api *MetricsAPI) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 		metric.Value = &value
 	}
 	if err != nil {
-		errInternalServerError(w, err)
+		switch err {
+		case metrics.ErrUnknownMetric:
+			errNotFound(w, err)
+		default:
+			errInternalServerError(w, err)
+		}
 		return
 	}
 	writeJSON(w, http.StatusOK, &metric)
