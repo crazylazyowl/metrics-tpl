@@ -1,8 +1,6 @@
 package api
 
 import (
-	"errors"
-
 	"github.com/crazylazyowl/metrics-tpl/internal/usecase/metrics"
 )
 
@@ -16,13 +14,13 @@ type MetricUpdateReq struct {
 func (m MetricUpdateReq) Validate() error {
 	switch m.MetricType {
 	case metrics.CounterMetricType:
-		if m.Delta == nil {
-			return errors.New("delta is missing")
-		}
+		// if m.Delta == nil {
+		// 	return errors.New("delta is missing")
+		// }
 	case metrics.GaugeMetricType:
-		if m.Value == nil {
-			return errors.New("value is missing")
-		}
+		// if m.Value == nil {
+		// 	return errors.New("value is missing")
+		// }
 	default:
 		return metrics.ErrUnknownMetricType
 	}
