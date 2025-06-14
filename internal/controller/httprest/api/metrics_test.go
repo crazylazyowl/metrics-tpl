@@ -1,4 +1,4 @@
-package metrics
+package api
 
 import (
 	"net/http"
@@ -16,7 +16,7 @@ import (
 func TestAPI_UpdateMetric(t *testing.T) {
 	repository := memstorage.New()
 	usecase := metrics.New(repository)
-	router := NewRouter(usecase)
+	router := NewMetricsRouter(usecase)
 	server := httptest.NewServer(router)
 
 	type want struct {

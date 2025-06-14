@@ -4,9 +4,9 @@ import (
 	"log"
 	"net/http"
 
-	metricsAPI "github.com/crazylazyowl/metrics-tpl/internal/controller/httprest/metrics"
+	"github.com/crazylazyowl/metrics-tpl/internal/controller/httprest"
 	"github.com/crazylazyowl/metrics-tpl/internal/repository/memstorage"
-	metricsUsecase "github.com/crazylazyowl/metrics-tpl/internal/usecase/metrics"
+	"github.com/crazylazyowl/metrics-tpl/internal/usecase/metrics"
 )
 
 func main() {
@@ -17,9 +17,9 @@ func main() {
 
 	storage := memstorage.New()
 
-	usecase := metricsUsecase.New(storage)
+	usecase := metrics.New(storage)
 
-	router := metricsAPI.NewRouter(usecase)
+	router := httprest.NewRouter(usecase)
 
 	_ = http.ListenAndServe(args.address, router)
 }
