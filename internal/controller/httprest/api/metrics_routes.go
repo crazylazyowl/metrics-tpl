@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 
+	"github.com/crazylazyowl/metrics-tpl/internal/controller/httprest/middleware"
 	"github.com/crazylazyowl/metrics-tpl/internal/usecase/metrics"
 
 	"github.com/go-chi/chi/v5"
@@ -14,5 +15,7 @@ func NewMetricsRouter(metrics *metrics.Usecase) http.Handler {
 	r.Get("/", api.GetMetrics)
 	r.Get("/value/{type}/{metric}", api.GetMetric)
 	r.Post("/update/{type}/{metric}/{value}", api.UpdateMetric)
+	r.With(middleware.JSONContentType).Post("/update/", api.UpdateMetricJSON)
+	r.With(middleware.JSONContentType).Get("/value/", api.GetMetricJSON)
 	return r
 }

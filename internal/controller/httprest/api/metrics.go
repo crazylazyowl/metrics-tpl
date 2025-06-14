@@ -55,7 +55,7 @@ func (api *MetricsAPI) GetMetric(w http.ResponseWriter, r *http.Request) {
 			case metrics.ErrUnknownMetric:
 				http.Error(w, err.Error(), http.StatusNotFound)
 			default:
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				errInternalServerError(w, err)
 			}
 			return
 		}
@@ -71,7 +71,7 @@ func (api *MetricsAPI) GetMetric(w http.ResponseWriter, r *http.Request) {
 			case metrics.ErrUnknownMetric:
 				http.Error(w, err.Error(), http.StatusNotFound)
 			default:
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				errInternalServerError(w, err)
 			}
 			return
 		}
@@ -80,7 +80,7 @@ func (api *MetricsAPI) GetMetric(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Error(w, metrics.ErrUnknownMetricType.Error(), http.StatusBadRequest)
+	errBadRequest(w, metrics.ErrUnknownMetricType)
 }
 
 func (api *MetricsAPI) UpdateMetric(w http.ResponseWriter, r *http.Request) {
@@ -91,11 +91,11 @@ func (api *MetricsAPI) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	if mtype == metrics.CounterMetricType {
 		counter, err := strconv.ParseInt(mvalue, 10, 64)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			errBadRequest(w, err)
 			return
 		}
 		if err := api.metrics.AppendCounter(mname, counter); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			errInternalServerError(w, err)
 			return
 		}
 		w.WriteHeader(http.StatusOK)
@@ -105,16 +105,60 @@ func (api *MetricsAPI) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	if mtype == metrics.GaugeMetricType {
 		gauge, err := strconv.ParseFloat(mvalue, 64)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			errBadRequest(w, err)
 			return
 		}
 		if err := api.metrics.UpdateGauge(mname, gauge); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			errInternalServerError(w, err)
 			return
 		}
 		w.WriteHeader(http.StatusOK)
 		return
 	}
 
-	http.Error(w, metrics.ErrUnknownMetricType.Error(), http.StatusBadRequest)
+	errBadRequest(w, metrics.ErrUnknownMetricType)
+}
+
+func (api *MetricsAPI) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
+	var metric MetricGetReq
+	if err := readJSON(r, &metric); err != nil {
+		errBadRequest(w, err)
+		return
+	}
+	var err error
+	switch metric.MetricType {
+	case metrics.CounterMetricType:
+		var delta int64
+		delta, err = api.metrics.GetCounterSum(metric.ID)
+		metric.Delta = &delta
+	case metrics.GaugeMetricType:
+		var value float64
+		value, err = api.metrics.GetGauge(metric.ID)
+		metric.Value = &value
+	}
+	if err != nil {
+		errInternalServerError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, &metric)
+}
+
+func (api *MetricsAPI) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
+	var metric MetricUpdateReq
+	if err := readJSON(r, &metric); err != nil {
+		errBadRequest(w, err)
+		return
+	}
+	var err error
+	switch metric.MetricType {
+	case metrics.CounterMetricType:
+		err = api.metrics.AppendCounter(metric.ID, *metric.Delta)
+	case metrics.GaugeMetricType:
+		err = api.metrics.UpdateGauge(metric.ID, *metric.Value)
+	}
+	if err != nil {
+		errInternalServerError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, &metric)
 }
