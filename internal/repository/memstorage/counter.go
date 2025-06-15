@@ -10,6 +10,13 @@ type counters struct {
 	mu *sync.RWMutex
 }
 
+func newCounters() *counters {
+	return &counters{
+		m:  make(map[string][]int64),
+		mu: &sync.RWMutex{},
+	}
+}
+
 func (c *counters) Copy() map[string][]int64 {
 	c.mu.RLock()
 	defer c.mu.RUnlock()

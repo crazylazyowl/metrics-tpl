@@ -10,6 +10,13 @@ type gauges struct {
 	mu *sync.RWMutex
 }
 
+func newGauges() *gauges {
+	return &gauges{
+		m:  make(map[string]float64),
+		mu: &sync.RWMutex{},
+	}
+}
+
 func (g *gauges) Copy() map[string]float64 {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
