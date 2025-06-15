@@ -84,7 +84,7 @@ func monitor(ctx context.Context, conf *config) error {
 				metric := api.MetricUpdateReq{
 					ID:         key,
 					MetricType: metrics.GaugeMetricType,
-					Value:      &value,
+					Gauge:      &value,
 				}
 				if err := report(url, &metric); err != nil {
 					log.Printf("failed to send %s (%f); err=%v\n", key, value, err)
@@ -93,7 +93,7 @@ func monitor(ctx context.Context, conf *config) error {
 			metric := api.MetricUpdateReq{
 				ID:         "PollCount",
 				MetricType: metrics.CounterMetricType,
-				Delta:      &counter,
+				Counter:    &counter,
 			}
 			if err := report(url, &metric); err != nil {
 				log.Printf("failed to send %s (%d); err=%v\n", "PollCount", counter, err)

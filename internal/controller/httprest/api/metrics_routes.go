@@ -11,11 +11,18 @@ import (
 
 func NewMetricsRouter(metrics *metrics.Usecase) http.Handler {
 	api := NewMetricsAPI(metrics)
+
 	r := chi.NewRouter()
+
 	r.Get("/", api.GetMetrics)
+
 	r.Get("/value/{type}/{metric}", api.GetMetric)
 	r.Post("/update/{type}/{metric}/{value}", api.UpdateMetric)
-	r.With(middleware.JSONContentType).Post("/update/", api.UpdateMetricJSON)
-	r.With(middleware.JSONContentType).Post("/value/", api.GetMetricJSON)
+
+	r.With(middleware.JSONContentType).Group(func(r chi.Router) {
+		r.Post("/value/", api.GetMetricJSON)
+		r.Post("/update/", api.UpdateMetricJSON)
+	})
+
 	return r
 }

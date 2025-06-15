@@ -128,13 +128,13 @@ func (api *MetricsAPI) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 	var err error
 	switch metric.MetricType {
 	case metrics.CounterMetricType:
-		var delta int64
-		delta, err = api.metrics.GetCounterSum(metric.ID)
-		metric.Delta = &delta
+		var value int64
+		value, err = api.metrics.GetCounterSum(metric.ID)
+		metric.Counter = &value
 	case metrics.GaugeMetricType:
 		var value float64
 		value, err = api.metrics.GetGauge(metric.ID)
-		metric.Value = &value
+		metric.Gauge = &value
 	}
 	if err != nil {
 		switch err {
@@ -157,9 +157,9 @@ func (api *MetricsAPI) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) 
 	var err error
 	switch metric.MetricType {
 	case metrics.CounterMetricType:
-		err = api.metrics.AppendCounter(metric.ID, *metric.Delta)
+		err = api.metrics.AppendCounter(metric.ID, *metric.Counter)
 	case metrics.GaugeMetricType:
-		err = api.metrics.UpdateGauge(metric.ID, *metric.Value)
+		err = api.metrics.UpdateGauge(metric.ID, *metric.Gauge)
 	}
 	if err != nil {
 		errInternalServerError(w, err)
