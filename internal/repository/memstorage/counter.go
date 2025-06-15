@@ -11,8 +11,8 @@ type counters struct {
 }
 
 func (c *counters) Copy() map[string][]int64 {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
 	m := make(map[string][]int64, len(c.m))
 	for k, v := range c.m {
@@ -21,14 +21,12 @@ func (c *counters) Copy() map[string][]int64 {
 	return m
 }
 
-func (c *counters) Get(name string) []int64 {
+func (c *counters) Get(name string) ([]int64, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	if _, ok := c.m[name]; !ok {
-		return nil
-	}
-	return slices.Clone(c.m[name])
+	values, ok := c.m[name]
+	return values, ok
 }
 
 func (c *counters) Append(name string, value int64) {

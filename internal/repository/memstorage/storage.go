@@ -27,16 +27,16 @@ func (s *MemStorage) GetGauges() map[string]float64 {
 }
 
 func (s *MemStorage) GetCounter(name string) ([]int64, error) {
-	values := s.counters.Get(name)
-	if values == nil {
+	values, found := s.counters.Get(name)
+	if !found {
 		return nil, metrics.ErrUnknownMetric
 	}
 	return values, nil
 }
 
 func (s *MemStorage) GetGauge(name string) (float64, error) {
-	value := s.gauges.Get(name)
-	if value == 0 {
+	value, found := s.gauges.Get(name)
+	if !found {
 		return 0, metrics.ErrUnknownMetric
 	}
 	return value, nil

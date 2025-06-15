@@ -11,20 +11,18 @@ type gauges struct {
 }
 
 func (g *gauges) Copy() map[string]float64 {
-	g.mu.Lock()
-	defer g.mu.Unlock()
+	g.mu.RLock()
+	defer g.mu.RUnlock()
 
 	return maps.Clone(g.m)
 }
 
-func (g *gauges) Get(name string) float64 {
+func (g *gauges) Get(name string) (float64, bool) {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 
-	if _, ok := g.m[name]; !ok {
-		return 0 // TODO: 0 is a valid metric value
-	}
-	return g.m[name]
+	value, ok := g.m[name]
+	return value, ok
 }
 
 func (g *gauges) Set(name string, value float64) {
