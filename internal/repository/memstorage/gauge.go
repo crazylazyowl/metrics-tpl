@@ -7,7 +7,7 @@ import (
 
 type gauges struct {
 	m  map[string]float64
-	mu sync.RWMutex
+	mu *sync.RWMutex
 }
 
 func (g *gauges) Copy() map[string]float64 {

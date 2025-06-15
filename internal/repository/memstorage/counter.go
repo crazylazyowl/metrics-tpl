@@ -7,7 +7,7 @@ import (
 
 type counters struct {
 	m  map[string][]int64
-	mu sync.RWMutex
+	mu *sync.RWMutex
 }
 
 func (c *counters) Copy() map[string][]int64 {

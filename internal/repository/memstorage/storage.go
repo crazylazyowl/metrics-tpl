@@ -1,6 +1,8 @@
 package memstorage
 
 import (
+	"sync"
+
 	"github.com/crazylazyowl/metrics-tpl/internal/usecase/metrics"
 )
 
@@ -13,8 +15,8 @@ type MemStorage struct {
 
 func New() *MemStorage {
 	return &MemStorage{
-		counters: counters{m: make(map[string][]int64)},
-		gauges:   gauges{m: make(map[string]float64)},
+		counters: counters{m: make(map[string][]int64), mu: &sync.RWMutex{}},
+		gauges:   gauges{m: make(map[string]float64), mu: &sync.RWMutex{}},
 	}
 }
 
