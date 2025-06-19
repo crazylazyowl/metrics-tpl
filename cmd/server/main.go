@@ -21,5 +21,5 @@ func main() {
 
 	router := httprest.NewRouter(usecase)
 
-	_ = http.ListenAndServe(args.address, router)
+	log.Fatalln(http.ListenAndServe(args.address, router))
 }

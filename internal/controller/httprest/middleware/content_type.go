@@ -6,7 +6,8 @@ import (
 )
 
 const (
-	jsonContentType = "application/json"
+	jsonContentType     = "application/json"
+	textHtmlContentType = "text/html"
 )
 
 func JSONContentType(next http.Handler) http.Handler {

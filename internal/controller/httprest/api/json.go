@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 )
 
@@ -9,8 +10,8 @@ type Validatable interface {
 	Validate() error
 }
 
-func readJSON(r *http.Request, j Validatable) error {
-	if err := json.NewDecoder(r.Body).Decode(j); err != nil {
+func readJSON(r io.Reader, j Validatable) error {
+	if err := json.NewDecoder(r).Decode(j); err != nil {
 		return err
 	}
 	return j.Validate()

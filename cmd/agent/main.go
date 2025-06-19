@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -102,21 +103,35 @@ func monitor(ctx context.Context, conf *config) error {
 	}
 }
 
-func report(url string, m *api.MetricUpdateReq) error {
-	if err := m.Validate(); err != nil {
+func report(url string, metric *api.MetricUpdateReq) error {
+	if err := metric.Validate(); err != nil {
 		return err
 	}
-	data, err := json.Marshal(m)
+
+	data, err := json.Marshal(metric)
 	if err != nil {
 		return err
 	}
-	body := bytes.NewReader(data)
-	resp, err := http.Post(url, "application/json", body)
-	if err == nil {
-		resp.Body.Close()
-		if resp.StatusCode != 200 {
-			return fmt.Errorf("status code = %d", resp.StatusCode)
-		}
+
+	buf := bytes.NewBuffer(nil)
+
+	w := gzip.NewWriter(buf)
+	w.Write(data)
+	w.Close()
+
+	req, _ := http.NewRequest(http.MethodPost, url, buf)
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Content-Encoding", "gzip")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
 	}
-	return err
+	resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("status code = %d", resp.StatusCode)
+	}
+
+	return nil
 }
