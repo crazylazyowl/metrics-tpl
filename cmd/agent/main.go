@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -113,15 +112,16 @@ func report(url string, metric *api.MetricUpdateReq) error {
 		return err
 	}
 
-	buf := bytes.NewBuffer(nil)
+	// buf := bytes.NewBuffer(nil)
 
-	w := gzip.NewWriter(buf)
-	w.Write(data)
-	w.Close()
+	// w := gzip.NewWriter(buf)
+	// w.Write(data)
+	// w.Close()
 
-	req, _ := http.NewRequest(http.MethodPost, url, buf)
+	// req, _ := http.NewRequest(http.MethodPost, url, buf)
+	req, _ := http.NewRequest(http.MethodPost, url, bytes.NewReader(data))
 	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Content-Encoding", "gzip")
+	// req.Header.Add("Content-Encoding", "gzip")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

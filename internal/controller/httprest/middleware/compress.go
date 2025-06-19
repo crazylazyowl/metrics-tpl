@@ -7,21 +7,22 @@ import (
 	"strings"
 )
 
-type CompressResponseWriter struct {
+type compressResponseWriter struct {
 	http.ResponseWriter
 	io.Writer
 	compressible bool
 }
 
-func (w *CompressResponseWriter) WriteHeader(status int) {
+func (w *compressResponseWriter) WriteHeader(status int) {
 	switch w.Header().Get("Content-Type") {
-	case jsonContentType, textHtmlContentType:
+	case jsonContentType, textHTMLContentType:
+		w.Header().Set("Content-Encoding", "gzip")
 		w.compressible = true
 	}
 	w.ResponseWriter.WriteHeader(status)
 }
 
-func (w *CompressResponseWriter) Write(data []byte) (int, error) {
+func (w *compressResponseWriter) Write(data []byte) (int, error) {
 	if w.compressible {
 		return w.Writer.Write(data)
 	}
@@ -36,7 +37,6 @@ func Compress(next http.Handler) http.Handler {
 		}
 		writer := gzip.NewWriter(w)
 		defer writer.Close()
-		w.Header().Set("Content-Encoding", "gzip")
-		next.ServeHTTP(&CompressResponseWriter{ResponseWriter: w, Writer: writer}, r)
+		next.ServeHTTP(&compressResponseWriter{ResponseWriter: w, Writer: writer}, r)
 	})
 }

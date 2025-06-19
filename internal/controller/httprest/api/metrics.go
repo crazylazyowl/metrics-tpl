@@ -1,10 +1,8 @@
 package api
 
 import (
-	"bytes"
 	"compress/gzip"
 	"fmt"
-	"io"
 	"net/http"
 	"sort"
 	"strconv"
@@ -126,9 +124,23 @@ func (api *MetricsAPI) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 
 func (api *MetricsAPI) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 	var metric MetricGetReq
-	if err := readJSON(r.Body, &metric); err != nil {
-		errBadRequest(w, err)
-		return
+	if strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {
+		reader, err := gzip.NewReader(r.Body)
+		if err != nil {
+			errInternalServerError(w, err)
+			return
+		}
+		err = readJSON(reader, &metric)
+		reader.Close()
+		if err != nil {
+			errBadRequest(w, err)
+			return
+		}
+	} else {
+		if err := readJSON(r.Body, &metric); err != nil {
+			errBadRequest(w, err)
+			return
+		}
 	}
 	var err error
 	switch metric.MetricType {
@@ -161,13 +173,9 @@ func (api *MetricsAPI) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) 
 			errInternalServerError(w, err)
 			return
 		}
-		data, err := io.ReadAll(reader)
+		err = readJSON(reader, &metric)
 		reader.Close()
 		if err != nil {
-			errInternalServerError(w, err)
-			return
-		}
-		if err := readJSON(bytes.NewReader(data), &metric); err != nil {
 			errBadRequest(w, err)
 			return
 		}
