@@ -1,13 +1,27 @@
 package api
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"io"
 	"net/http"
+	"strings"
 )
 
 type Validatable interface {
 	Validate() error
+}
+
+func readCompressedJSON(r *http.Request, j Validatable) error {
+	if !strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {
+		return readJSON(r.Body, j)
+	}
+	reader, err := gzip.NewReader(r.Body)
+	if err != nil {
+		return err
+	}
+	defer reader.Close()
+	return readJSON(reader, j)
 }
 
 func readJSON(r io.Reader, j Validatable) error {

@@ -14,6 +14,9 @@ type MetricUpdateReq struct {
 }
 
 func (m MetricUpdateReq) Validate() error {
+	if m.ID == "" {
+		return errors.New("id is missing")
+	}
 	switch m.MetricType {
 	case metrics.CounterMetricType:
 		if m.Counter == nil {
@@ -37,6 +40,9 @@ type MetricGetReq struct {
 }
 
 func (m MetricGetReq) Validate() error {
+	if m.ID == "" {
+		return errors.New("id is missing")
+	}
 	switch m.MetricType {
 	case metrics.CounterMetricType:
 	case metrics.GaugeMetricType:

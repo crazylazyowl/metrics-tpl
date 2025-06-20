@@ -1,12 +1,10 @@
 package api
 
 import (
-	"compress/gzip"
 	"fmt"
 	"net/http"
 	"sort"
 	"strconv"
-	"strings"
 
 	"github.com/crazylazyowl/metrics-tpl/internal/usecase/metrics"
 
@@ -124,23 +122,9 @@ func (api *MetricsAPI) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 
 func (api *MetricsAPI) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 	var metric MetricGetReq
-	if strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {
-		reader, err := gzip.NewReader(r.Body)
-		if err != nil {
-			errInternalServerError(w, err)
-			return
-		}
-		err = readJSON(reader, &metric)
-		reader.Close()
-		if err != nil {
-			errBadRequest(w, err)
-			return
-		}
-	} else {
-		if err := readJSON(r.Body, &metric); err != nil {
-			errBadRequest(w, err)
-			return
-		}
+	if err := readCompressedJSON(r, &metric); err != nil {
+		errBadRequest(w, err)
+		return
 	}
 	var err error
 	switch metric.MetricType {
@@ -167,23 +151,9 @@ func (api *MetricsAPI) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 
 func (api *MetricsAPI) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	var metric MetricUpdateReq
-	if strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {
-		reader, err := gzip.NewReader(r.Body)
-		if err != nil {
-			errInternalServerError(w, err)
-			return
-		}
-		err = readJSON(reader, &metric)
-		reader.Close()
-		if err != nil {
-			errBadRequest(w, err)
-			return
-		}
-	} else {
-		if err := readJSON(r.Body, &metric); err != nil {
-			errBadRequest(w, err)
-			return
-		}
+	if err := readCompressedJSON(r, &metric); err != nil {
+		errBadRequest(w, err)
+		return
 	}
 	var err error
 	switch metric.MetricType {
