@@ -33,7 +33,7 @@ func main() {
 	if conf.restore {
 		if err := storage.Restore(conf.fileStoragePath); err != nil {
 			log.Err(err).Msg("failed to restore memstorage")
-			return
+			// return
 		}
 	}
 	go storage.Backup(notifyCtx, conf.fileStoragePath, conf.storeInterval)
