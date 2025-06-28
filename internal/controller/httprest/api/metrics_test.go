@@ -16,11 +16,10 @@ import (
 )
 
 func TestAPI_UpdateMetric(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	repository, _ := memstorage.New(ctx, memstorage.Options{
+	repository, _ := memstorage.New(context.TODO(), memstorage.Options{
+		Restore:        false,
 		BackupPath:     "dump.json",
-		BackupInterval: time.Duration(300) * time.Second,
+		BackupInterval: time.Duration(1000) * time.Second,
 	})
 	usecase := metrics.New(repository)
 	router := NewMetricsRouter(usecase)

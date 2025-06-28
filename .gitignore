@@ -24,4 +24,5 @@ vendor/
 .idea
 .vscode
 
+bins/
 dump.json
