@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/crazylazyowl/metrics-tpl/internal/repository/memstorage"
 	"github.com/crazylazyowl/metrics-tpl/internal/usecase/metrics"
@@ -15,7 +16,12 @@ import (
 )
 
 func TestAPI_UpdateMetric(t *testing.T) {
-	repository, _ := memstorage.New(context.TODO(), memstorage.Options{})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	repository, _ := memstorage.New(ctx, memstorage.Options{
+		BackupPath:     "dump.json",
+		BackupInterval: time.Duration(300) * time.Second,
+	})
 	usecase := metrics.New(repository)
 	router := NewMetricsRouter(usecase)
 	server := httptest.NewServer(router)
