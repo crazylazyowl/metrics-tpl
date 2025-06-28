@@ -23,6 +23,8 @@ type Options struct {
 }
 
 func New(ctx context.Context, opts Options) (*MemStorage, error) {
+	logger := log.With().Logger()
+
 	storage := &MemStorage{
 		counters: newCounters(),
 		gauges:   newGauges(),
@@ -39,6 +41,8 @@ func New(ctx context.Context, opts Options) (*MemStorage, error) {
 			// 		"STORE_INTERVAL=2",
 			// 		"FILE_STORAGE_PATH=" + flagFileStoragePath,
 			// 	}...)
+			logger.Error().Err(err).Str("path", opts.BackupPath).
+				Msg("failed to restore storage from file, starting with empty storage")
 		}
 	}
 
