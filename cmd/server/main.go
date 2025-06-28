@@ -18,46 +18,49 @@ import (
 func main() {
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 
+	logger := log.With().Logger() // TODO: move to separate package
+
 	conf, err := loadConfig()
 	if err != nil {
-		log.Err(err).Msg("faild to load config")
+		logger.Err(err).Msg("faild to load config")
 		return
 	}
 
-	ctx := context.Background()
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
 
-	notifyCtx, notifyCancel := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
-	defer notifyCancel()
-
-	storage := memstorage.New()
-	if conf.restore {
-		if err := storage.Restore(conf.fileStoragePath); err != nil {
-			log.Err(err).Msg("failed to restore memstorage")
-			// return
-		}
+	storage, err := memstorage.New(ctx, memstorage.Options{
+		Restore:        conf.storage.restore,
+		BackupPath:     conf.storage.backupPath,
+		BackupInterval: time.Duration(conf.storage.backupInterval) * time.Second,
+	})
+	if err != nil {
+		logger.Err(err).Msg("failed to create memstorage")
+		return
 	}
-	go storage.Backup(notifyCtx, conf.fileStoragePath, conf.storeInterval)
+	defer storage.Close()
 
 	usecase := metrics.New(storage)
-
 	router := httprest.NewRouter(usecase)
-
 	server := http.Server{
 		Addr:    conf.address,
 		Handler: router,
 	}
 
 	go func() {
-		<-notifyCtx.Done()
-		log.Debug().Msg("shutdown")
-		timeoutCtx, timeoutCancel := context.WithTimeout(ctx, 10*time.Second)
-		defer timeoutCancel()
-		server.Shutdown(timeoutCtx)
+		<-ctx.Done()
+
+		logger.Debug().Msg("shutting down server...")
+
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		if err := server.Shutdown(ctx); err != nil {
+			logger.Err(err).Msg("failed to shutdown server")
+		}
 	}()
 
-	if err := server.ListenAndServe(); err != nil {
-		if !errors.Is(err, http.ErrServerClosed) {
-			log.Err(err).Msg("listen and server failed")
-		}
+	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		log.Err(err).Msg("listen and server failed")
 	}
 }

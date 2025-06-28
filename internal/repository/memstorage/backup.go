@@ -14,7 +14,7 @@ type snapshot struct {
 	Gauges   map[string]float64 `json:"gauges"`
 }
 
-func (s *MemStorage) Restore(path string) error {
+func (s *MemStorage) restoreFromFile(path string) error {
 	logger := log.With().Str("path", path).Logger()
 
 	logger.Debug().Msg("restore from backup")
@@ -44,50 +44,45 @@ func (s *MemStorage) Restore(path string) error {
 	return nil
 }
 
-func (s *MemStorage) Backup(ctx context.Context, path string, interval int) error {
-	logger := log.With().Str("path", path).Int("interval", interval).Logger()
-
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
+func (s *MemStorage) backupToFile(ctx context.Context, path string, dur time.Duration) error {
+	logger := log.With().
+		Str("path", path).
+		Dur("dur", dur).
+		Logger()
 
 	logger.Debug().Msg("start backup")
 
-	t := time.NewTicker(time.Duration(interval) * time.Second)
+	t := time.NewTicker(dur)
 	defer t.Stop()
-
-	dump := func() error {
-		if err := f.Truncate(0); err != nil {
-			return err
-		}
-		if _, err := f.Seek(0, 0); err != nil {
-			return err
-		}
-		snapshot := snapshot{
-			Counters: s.GetCounters(),
-			Gauges:   s.GetGauges(),
-		}
-		if err := json.NewEncoder(f).Encode(&snapshot); err != nil {
-			return err
-		}
-		return nil
-	}
 
 	for {
 		select {
 		case <-ctx.Done():
 			logger.Debug().Msg("stop backup")
-			if err := dump(); err != nil {
-				logger.Error().Err(err).Msg("faield to backup storage after context cancalation")
-			}
 			return ctx.Err()
 		case <-t.C:
-		}
-		logger.Debug().Msg("backup")
-		if err := dump(); err != nil {
-			logger.Error().Err(err).Msg("failed to backup storage")
+			logger.Debug().Msg("backup")
+			if err := s.dump(path); err != nil {
+				logger.Error().Err(err).Msg("failed to backup storage")
+			}
 		}
 	}
+}
+
+func (s *MemStorage) dump(path string) error {
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	snapshot := snapshot{
+		Counters: s.GetCounters(),
+		Gauges:   s.GetGauges(),
+	}
+	if err := json.NewEncoder(f).Encode(&snapshot); err != nil {
+		return err
+	}
+
+	return nil
 }

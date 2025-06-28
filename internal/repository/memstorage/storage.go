@@ -1,7 +1,11 @@
 package memstorage
 
 import (
+	"context"
+	"time"
+
 	"github.com/crazylazyowl/metrics-tpl/internal/usecase/metrics"
+	"github.com/rs/zerolog/log"
 )
 
 var _ metrics.MetricsStorage = (*MemStorage)(nil)
@@ -9,13 +13,37 @@ var _ metrics.MetricsStorage = (*MemStorage)(nil)
 type MemStorage struct {
 	counters *counters
 	gauges   *gauges
+	opts     Options
 }
 
-func New() *MemStorage {
-	return &MemStorage{
+type Options struct {
+	Restore        bool
+	BackupPath     string
+	BackupInterval time.Duration
+}
+
+func New(ctx context.Context, opts Options) (*MemStorage, error) {
+	storage := &MemStorage{
 		counters: newCounters(),
 		gauges:   newGauges(),
+		opts:     opts,
 	}
+
+	if opts.Restore {
+		if err := storage.restoreFromFile(opts.BackupPath); err != nil {
+			return nil, err
+		}
+	}
+
+	go storage.backupToFile(ctx, opts.BackupPath, opts.BackupInterval)
+
+	return storage, nil
+}
+
+func (s *MemStorage) Close() error {
+	logger := log.With().Str("path", s.opts.BackupPath).Logger()
+	logger.Debug().Msg("closing storage")
+	return s.dump(s.opts.BackupPath)
 }
 
 func (s *MemStorage) GetCounters() map[string][]int64 {

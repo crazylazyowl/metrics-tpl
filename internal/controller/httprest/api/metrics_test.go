@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -14,7 +15,7 @@ import (
 )
 
 func TestAPI_UpdateMetric(t *testing.T) {
-	repository := memstorage.New()
+	repository, _ := memstorage.New(context.TODO(), memstorage.Options{})
 	usecase := metrics.New(repository)
 	router := NewMetricsRouter(usecase)
 	server := httptest.NewServer(router)
