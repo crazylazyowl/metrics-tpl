@@ -10,7 +10,7 @@ import (
 )
 
 type snapshot struct {
-	Counters map[string][]int64 `json:"counters"`
+	Counters map[string]int64   `json:"counters"`
 	Gauges   map[string]float64 `json:"gauges"`
 }
 
@@ -31,10 +31,8 @@ func (s *MemStorage) restoreFromFile(path string) error {
 		return err
 	}
 
-	for key, values := range snapshot.Counters {
-		for _, value := range values {
-			s.counters.Append(key, value)
-		}
+	for key, value := range snapshot.Counters {
+		s.counters.Update(key, value)
 	}
 
 	for key, value := range snapshot.Gauges {

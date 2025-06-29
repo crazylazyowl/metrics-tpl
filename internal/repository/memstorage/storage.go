@@ -57,7 +57,7 @@ func (s *MemStorage) Close() error {
 	return s.dump(s.opts.BackupPath)
 }
 
-func (s *MemStorage) GetCounters() map[string][]int64 {
+func (s *MemStorage) GetCounters() map[string]int64 {
 	return s.counters.Copy()
 }
 
@@ -65,12 +65,12 @@ func (s *MemStorage) GetGauges() map[string]float64 {
 	return s.gauges.Copy()
 }
 
-func (s *MemStorage) GetCounter(name string) ([]int64, error) {
-	values, found := s.counters.Get(name)
+func (s *MemStorage) GetCounter(name string) (int64, error) {
+	value, found := s.counters.Get(name)
 	if !found {
-		return nil, metrics.ErrUnknownMetric
+		return 0, metrics.ErrUnknownMetric
 	}
-	return values, nil
+	return value, nil
 }
 
 func (s *MemStorage) GetGauge(name string) (float64, error) {
@@ -81,8 +81,8 @@ func (s *MemStorage) GetGauge(name string) (float64, error) {
 	return value, nil
 }
 
-func (s *MemStorage) AppendCounter(name string, value int64) error {
-	s.counters.Append(name, value)
+func (s *MemStorage) UpdateCounter(name string, value int64) error {
+	s.counters.Update(name, value)
 	return nil
 }
 

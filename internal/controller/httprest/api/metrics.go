@@ -38,8 +38,8 @@ func (api *MetricsAPI) GetMetrics(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Fprint(w, "Counter: <br>")
-	for key, values := range metrics.Counters {
-		fmt.Fprintf(w, "- %s: %d<br>", key, values[0])
+	for key, value := range metrics.Counters {
+		fmt.Fprintf(w, "- %s: %d<br>", key, value)
 	}
 
 	fmt.Fprint(w, "</body></html>")
@@ -95,7 +95,7 @@ func (api *MetricsAPI) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 			errBadRequest(w, err)
 			return
 		}
-		if err := api.metrics.AppendCounter(mname, counter); err != nil {
+		if err := api.metrics.UpdateCounter(mname, counter); err != nil {
 			errInternalServerError(w, err)
 			return
 		}
@@ -158,7 +158,7 @@ func (api *MetricsAPI) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) 
 	var err error
 	switch metric.MetricType {
 	case metrics.CounterMetricType:
-		err = api.metrics.AppendCounter(metric.ID, *metric.Counter)
+		err = api.metrics.UpdateCounter(metric.ID, *metric.Counter)
 	case metrics.GaugeMetricType:
 		err = api.metrics.UpdateGauge(metric.ID, *metric.Gauge)
 	}

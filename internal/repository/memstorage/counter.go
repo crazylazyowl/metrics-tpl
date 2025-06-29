@@ -1,44 +1,43 @@
 package memstorage
 
 import (
-	"slices"
+	"maps"
 	"sync"
 )
 
 type counters struct {
-	m  map[string][]int64
+	m  map[string]int64
 	mu *sync.RWMutex
 }
 
 func newCounters() *counters {
 	return &counters{
-		m:  make(map[string][]int64),
+		m:  make(map[string]int64),
 		mu: &sync.RWMutex{},
 	}
 }
 
-func (c *counters) Copy() map[string][]int64 {
+func (c *counters) Copy() map[string]int64 {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	m := make(map[string][]int64, len(c.m))
-	for k, v := range c.m {
-		m[k] = slices.Clone(v)
-	}
-	return m
+	return maps.Clone(c.m)
 }
 
-func (c *counters) Get(name string) ([]int64, bool) {
+func (c *counters) Get(name string) (int64, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	values, ok := c.m[name]
-	return values, ok
+	value, ok := c.m[name]
+	return value, ok
 }
 
-func (c *counters) Append(name string, value int64) {
+func (c *counters) Update(name string, value int64) int64 {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.m[name] = append(c.m[name], value)
+	tmp := c.m[name]
+	c.m[name] = tmp + value
+
+	return c.m[name]
 }
