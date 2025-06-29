@@ -52,12 +52,43 @@ func (u *Usecase) GetGauge(name string) (float64, error) {
 	return value, nil
 }
 
-// UpdateCounter appends a new value to the specified counter's value list.
-func (u *Usecase) UpdateCounter(name string, value int64) error {
-	return u.storage.UpdateCounter(name, value)
+// GetMetric returns the metric by its ID and type.
+func (u *Usecase) GetMetric(m Metric) (Metric, error) {
+	switch m.Type {
+	case CounterMetricType:
+		value, err := u.storage.GetCounter(m.ID)
+		if err != nil {
+			return Metric{}, err
+		}
+		m.Counter = &value
+	case GaugeMetricType:
+		value, err := u.storage.GetGauge(m.ID)
+		if err != nil {
+			return Metric{}, err
+		}
+		m.Gauge = &value
+	default:
+		return Metric{}, ErrUnknownMetricType
+	}
+	return m, nil
 }
 
-// UpdateGaute replaces the previous metric value with a new one.
-func (u *Usecase) UpdateGauge(name string, value float64) error {
-	return u.storage.UpdateGauge(name, value)
+// UpdateMetric updates the metric value based on its type and name.
+func (u *Usecase) UpdateMetric(m Metric) error {
+	if err := m.Validate(); err != nil {
+		return err
+	}
+	switch m.Type {
+	case CounterMetricType:
+		if m.Counter == nil {
+			return ErrMetricValue
+		}
+		return u.storage.UpdateCounter(m.ID, *m.Counter)
+	case GaugeMetricType:
+		if m.Gauge == nil {
+			return ErrMetricValue
+		}
+		return u.storage.UpdateGauge(m.ID, *m.Gauge)
+	}
+	return nil
 }

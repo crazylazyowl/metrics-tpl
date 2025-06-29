@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"math/rand/v2"
 	"net/http"
@@ -13,7 +14,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/crazylazyowl/metrics-tpl/internal/controller/httprest/api"
 	"github.com/crazylazyowl/metrics-tpl/internal/usecase/metrics"
 )
 
@@ -81,19 +81,19 @@ func monitor(ctx context.Context, conf *config) error {
 		case <-reportTicker.C:
 			log.Println("send metrics")
 			for key, value := range gauge {
-				metric := api.MetricUpdateReq{
-					ID:         key,
-					MetricType: metrics.GaugeMetricType,
-					Gauge:      &value,
+				metric := metrics.Metric{
+					ID:    key,
+					Type:  metrics.GaugeMetricType,
+					Gauge: &value,
 				}
 				if err := report(url, &metric); err != nil {
 					log.Printf("failed to send %s (%f); err=%v\n", key, value, err)
 				}
 			}
-			metric := api.MetricUpdateReq{
-				ID:         "PollCount",
-				MetricType: metrics.CounterMetricType,
-				Counter:    &counter,
+			metric := metrics.Metric{
+				ID:      "PollCount",
+				Type:    metrics.CounterMetricType,
+				Counter: &counter,
 			}
 			if err := report(url, &metric); err != nil {
 				log.Printf("failed to send %s (%d); err=%v\n", "PollCount", counter, err)
@@ -102,7 +102,7 @@ func monitor(ctx context.Context, conf *config) error {
 	}
 }
 
-func report(url string, metric *api.MetricUpdateReq) error {
+func report(url string, metric *metrics.Metric) error {
 	if err := metric.Validate(); err != nil {
 		return err
 	}
@@ -127,10 +127,11 @@ func report(url string, metric *api.MetricUpdateReq) error {
 	if err != nil {
 		return err
 	}
+	body, _ := io.ReadAll(resp.Body)
 	resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("status code = %d", resp.StatusCode)
+		return fmt.Errorf("status code = %d, data = %s", resp.StatusCode, string(body))
 	}
 
 	return nil
