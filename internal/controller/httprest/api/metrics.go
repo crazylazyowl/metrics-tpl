@@ -122,7 +122,7 @@ func (api *MetricsAPI) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 
 func (api *MetricsAPI) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 	var metric MetricGetReq
-	if err := readCompressedJSON(r, &metric); err != nil {
+	if err := readJSON(r.Body, &metric); err != nil {
 		errBadRequest(w, err)
 		return
 	}
@@ -151,7 +151,7 @@ func (api *MetricsAPI) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 
 func (api *MetricsAPI) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	var metric MetricUpdateReq
-	if err := readCompressedJSON(r, &metric); err != nil {
+	if err := readJSON(r.Body, &metric); err != nil {
 		errBadRequest(w, err)
 		return
 	}
