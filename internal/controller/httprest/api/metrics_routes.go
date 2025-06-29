@@ -14,16 +14,25 @@ func NewMetricsRouter(metrics *metrics.Usecase) http.Handler {
 
 	r := chi.NewRouter()
 
-	r.With(middleware.Compress).Get("/", api.GetMetrics)
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.Compress)
+		r.Get("/", api.GetMetrics)
+	})
 
-	r.Get("/value/{type}/{metric}", api.GetMetric)
-	r.Post("/update/{type}/{metric}/{value}", api.UpdateMetric)
+	// text/plain routes
+	r.Group(func(r chi.Router) {
+		r.Get("/value/{type}/{metric}", api.GetMetric)
+		r.Post("/update/{type}/{metric}/{value}", api.UpdateMetric)
+	})
 
-	r.With(middleware.JSONContentType, middleware.Compress, middleware.Decompress).
-		Group(func(r chi.Router) {
-			r.Post("/value/", api.GetMetricJSON)
-			r.Post("/update/", api.UpdateMetricJSON)
-		})
+	// json routes
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.JSONContentType)
+		r.Use(middleware.Compress)
+		r.Use(middleware.Decompress)
+		r.Post("/value/", api.GetMetricJSON)
+		r.Post("/update/", api.UpdateMetricJSON)
+	})
 
 	return r
 }
