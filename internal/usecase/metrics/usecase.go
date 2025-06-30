@@ -1,83 +1,54 @@
 package metrics
 
-type MetricsStorage interface {
-	GetCounter(name string) (int64, error)
-	GetGauge(name string) (float64, error)
-	GetCounters() map[string]int64
-	GetGauges() map[string]float64
-	UpdateCounter(name string, value int64) error
-	UpdateGauge(name string, value float64) error
+import "context"
+
+type MetricFetcher interface {
+	Fetch(ctx context.Context) ([]Metric, error)
+	FetchOne(ctx context.Context, m Metric) (Metric, error)
 }
 
-type Usecase struct {
-	storage MetricsStorage
+type MetricUpdater interface {
+	Update(ctx context.Context, m Metric) error
 }
 
-func New(repo MetricsStorage) *Usecase {
-	return &Usecase{storage: repo}
+type MetricRegistry interface {
+	MetricFetcher
+	MetricUpdater
 }
 
-const (
-	CounterMetricType = "counter"
-	GaugeMetricType   = "gauge"
-)
-
-type Metrics struct {
-	Counters map[string]int64
-	Gauges   map[string]float64
+type MetricUsecase struct {
+	reg MetricRegistry
 }
 
-func (u *Usecase) GetMetrics() Metrics {
-	return Metrics{
-		Counters: u.storage.GetCounters(),
-		Gauges:   u.storage.GetGauges(),
-	}
+func New(reg MetricRegistry) *MetricUsecase {
+	return &MetricUsecase{reg: reg}
 }
 
-// GetCounterSum returns the value for the specified counter.
-func (u *Usecase) GetCounterSum(name string) (int64, error) {
-	value, err := u.storage.GetCounter(name)
+func (u *MetricUsecase) Metrics(ctx context.Context) ([]Metric, error) {
+	metrics, err := u.reg.Fetch(ctx)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	return value, nil
+	return metrics, nil
 }
 
-// GetGauge returnes the value for the specified gauge.
-func (u *Usecase) GetGauge(name string) (float64, error) {
-	value, err := u.storage.GetGauge(name)
-	if err != nil {
-		return 0, err
-	}
-	return value, nil
-}
-
-// GetMetric returns the metric by its ID and type.
-func (u *Usecase) GetMetric(m Metric) (Metric, error) {
+func (u *MetricUsecase) Metric(ctx context.Context, m Metric) (Metric, error) {
 	if m.ID == "" {
 		return Metric{}, ErrEmptyMetricID
 	}
 	switch m.Type {
-	case CounterMetricType:
-		value, err := u.storage.GetCounter(m.ID)
-		if err != nil {
-			return Metric{}, err
-		}
-		m.Counter = &value
-	case GaugeMetricType:
-		value, err := u.storage.GetGauge(m.ID)
-		if err != nil {
-			return Metric{}, err
-		}
-		m.Gauge = &value
+	case CounterMetricType, GaugeMetricType:
 	default:
 		return Metric{}, ErrUnknownMetricType
 	}
-	return m, nil
+	metric, err := u.reg.FetchOne(ctx, m)
+	if err != nil {
+		return Metric{}, err
+	}
+	return metric, nil
 }
 
-// UpdateMetric updates the metric value based on its type and name.
-func (u *Usecase) UpdateMetric(m Metric) error {
+func (u *MetricUsecase) Update(ctx context.Context, m Metric) error {
 	if m.ID == "" {
 		return ErrEmptyMetricID
 	}
@@ -86,12 +57,15 @@ func (u *Usecase) UpdateMetric(m Metric) error {
 		if m.Counter == nil {
 			return ErrInvalidCounterValue
 		}
-		return u.storage.UpdateCounter(m.ID, *m.Counter)
 	case GaugeMetricType:
 		if m.Gauge == nil {
 			return ErrInvalidGaugeValue
 		}
-		return u.storage.UpdateGauge(m.ID, *m.Gauge)
+	default:
+		return ErrUnknownMetricType
 	}
-	return ErrUnknownMetricType
+	if err := u.reg.Update(ctx, m); err != nil {
+		return err
+	}
+	return nil
 }

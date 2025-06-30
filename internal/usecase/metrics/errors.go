@@ -1,17 +1,12 @@
 package metrics
 
 import (
+	"errors"
 	"fmt"
 )
 
-type ErrUnknownMetric struct{}
-
-func (e ErrUnknownMetric) Error() string {
-	return "metric error"
-}
-
 var (
-	ErrUnknownMetricID = fmt.Errorf("%w: unknown metric id", ErrUnknownMetric{})
+	ErrNotFound = errors.New("metric not found")
 )
 
 type ErrInvalidMetric struct{}
