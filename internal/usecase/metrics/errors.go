@@ -1,7 +1,12 @@
 package metrics
 
 import (
+	"errors"
 	"fmt"
+)
+
+var (
+	ErrNotFound = errors.New("metric not found")
 )
 
 type ErrUnknownMetric struct{}

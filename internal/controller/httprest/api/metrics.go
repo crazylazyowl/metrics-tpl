@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"sort"
 	"strconv"
 
 	"github.com/crazylazyowl/metrics-tpl/internal/controller/httprest/middleware"
@@ -14,13 +13,14 @@ import (
 )
 
 type MetricsAPI struct {
-	metrics *metrics.Usecase
+	metrics *metrics.MetricUsecase
 }
 
-func NewMetricsAPI(metrics *metrics.Usecase) *MetricsAPI {
+func NewMetricsAPI(metrics *metrics.MetricUsecase) *MetricsAPI {
 	return &MetricsAPI{metrics: metrics}
 }
-func NewMetricsRouter(metrics *metrics.Usecase) http.Handler {
+
+func NewMetricsRouter(metrics *metrics.MetricUsecase) http.Handler {
 	api := NewMetricsAPI(metrics)
 
 	r := chi.NewRouter()
@@ -49,26 +49,24 @@ func NewMetricsRouter(metrics *metrics.Usecase) http.Handler {
 }
 
 func (api *MetricsAPI) GetMetrics(w http.ResponseWriter, r *http.Request) {
-	metrics := api.metrics.GetMetrics(r.Context())
+	metricList, err := api.metrics.Metrics(r.Context())
+	if err != nil {
+		errInternalServerError(w, err) // TODO: review error handling
+		return
+	}
 
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(http.StatusOK)
 
 	fmt.Fprint(w, "<html><head></head><body>")
 
-	fmt.Fprint(w, "Gauge: <br>")
-	keys := make([]string, 0, len(metrics.Gauges))
-	for key := range metrics.Gauges {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	for _, key := range keys {
-		fmt.Fprintf(w, "- %s: %s<br>", key, strconv.FormatFloat(metrics.Gauges[key], 'f', -1, 64))
-	}
-
-	fmt.Fprint(w, "Counter: <br>")
-	for key, value := range metrics.Counters {
-		fmt.Fprintf(w, "- %s: %d<br>", key, value)
+	for _, m := range metricList {
+		switch m.Type {
+		case metrics.CounterMetricType:
+			fmt.Fprintf(w, "- %s: %d<br>", m.ID, *m.Counter)
+		case metrics.GaugeMetricType:
+			fmt.Fprintf(w, "- %s: %s<br>", m.ID, strconv.FormatFloat(*m.Gauge, 'f', -1, 64))
+		}
 	}
 
 	fmt.Fprint(w, "</body></html>")
@@ -79,7 +77,7 @@ func (api *MetricsAPI) GetMetric(w http.ResponseWriter, r *http.Request) {
 		ID:   chi.URLParam(r, "metric"),
 		Type: chi.URLParam(r, "type"),
 	}
-	metric, err := api.metrics.GetMetric(r.Context(), metric)
+	metric, err := api.metrics.Metric(r.Context(), metric)
 	if err != nil {
 		switch {
 		case errors.Is(err, metrics.ErrUnknownMetricID):
@@ -125,7 +123,7 @@ func (api *MetricsAPI) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 		errBadRequest(w, metrics.ErrUnknownMetricType)
 		return
 	}
-	if err := api.metrics.UpdateMetric(r.Context(), metric); err != nil {
+	if err := api.metrics.Update(r.Context(), metric); err != nil {
 		switch {
 		case errors.As(err, &metrics.ErrInvalidMetric{}):
 			errBadRequest(w, err)
@@ -143,7 +141,7 @@ func (api *MetricsAPI) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 		errBadRequest(w, err)
 		return
 	}
-	metric, err := api.metrics.GetMetric(r.Context(), metric)
+	metric, err := api.metrics.Metric(r.Context(), metric)
 	if err != nil {
 		switch {
 		case errors.Is(err, metrics.ErrUnknownMetricID):
@@ -166,7 +164,7 @@ func (api *MetricsAPI) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) 
 	}
 	ctx := r.Context()
 	// TODO: race condition between UpdateMetric and GetMetric
-	if err := api.metrics.UpdateMetric(ctx, metric); err != nil {
+	if err := api.metrics.Update(ctx, metric); err != nil {
 		switch {
 		case errors.As(err, &metrics.ErrInvalidMetric{}):
 			errBadRequest(w, err)
@@ -175,7 +173,7 @@ func (api *MetricsAPI) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) 
 		}
 		return
 	}
-	metric, err := api.metrics.GetMetric(ctx, metric)
+	metric, err := api.metrics.Metric(ctx, metric)
 	if err != nil {
 		switch {
 		case errors.As(err, &metrics.ErrInvalidMetric{}):

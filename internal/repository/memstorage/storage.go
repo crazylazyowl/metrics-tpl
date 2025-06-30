@@ -2,18 +2,19 @@ package memstorage
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/crazylazyowl/metrics-tpl/internal/usecase/metrics"
 	"github.com/rs/zerolog/log"
 )
 
-var _ metrics.MetricsStorage = (*MemStorage)(nil)
+var _ metrics.MetricRegistry = (*MemStorage)(nil)
 
 type MemStorage struct {
-	counters *counters
-	gauges   *gauges
-	opts     Options
+	m    map[string]metrics.Metric
+	mu   *sync.RWMutex
+	opts Options
 }
 
 type Options struct {
@@ -26,13 +27,13 @@ func New(ctx context.Context, opts Options) (*MemStorage, error) {
 	logger := log.With().Logger()
 
 	storage := &MemStorage{
-		counters: newCounters(),
-		gauges:   newGauges(),
-		opts:     opts,
+		m:    make(map[string]metrics.Metric),
+		mu:   &sync.RWMutex{},
+		opts: opts,
 	}
 
 	if opts.Restore {
-		if err := storage.restoreFromFile(opts.BackupPath); err != nil {
+		if err := storage.restoreFromFile(ctx, opts.BackupPath); err != nil {
 			// NOTE: autotest fails if we return error here
 			// return nil, err
 			// 	suite.envs = append(os.Environ(), []string{
@@ -57,36 +58,44 @@ func (s *MemStorage) Close(ctx context.Context) error {
 	return s.dump(ctx, s.opts.BackupPath)
 }
 
-func (s *MemStorage) GetCounters(ctx context.Context) map[string]int64 {
-	return s.counters.Copy()
-}
+func (s *MemStorage) Fetch(ctx context.Context) ([]metrics.Metric, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
-func (s *MemStorage) GetGauges(ctx context.Context) map[string]float64 {
-	return s.gauges.Copy()
-}
-
-func (s *MemStorage) GetCounter(ctx context.Context, name string) (int64, error) {
-	value, found := s.counters.Get(name)
-	if !found {
-		return 0, metrics.ErrUnknownMetricID
+	metrics := make([]metrics.Metric, 0, len(s.m))
+	for _, m := range s.m {
+		metrics = append(metrics, m)
 	}
-	return value, nil
+
+	return metrics, nil
 }
 
-func (s *MemStorage) GetGauge(ctx context.Context, name string) (float64, error) {
-	value, found := s.gauges.Get(name)
-	if !found {
-		return 0, metrics.ErrUnknownMetricID
+func (s *MemStorage) FetchOne(ctx context.Context, m metrics.Metric) (metrics.Metric, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	metric, ok := s.m[m.ID]
+	if !ok {
+		return metrics.Metric{}, metrics.ErrNotFound
 	}
-	return value, nil
+
+	return metric, nil
 }
 
-func (s *MemStorage) UpdateCounter(ctx context.Context, name string, value int64) error {
-	s.counters.Update(name, value)
-	return nil
-}
+func (s *MemStorage) Update(ctx context.Context, m metrics.Metric) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-func (s *MemStorage) UpdateGauge(ctx context.Context, name string, value float64) error {
-	s.gauges.Set(name, value)
+	switch m.Type {
+	case metrics.CounterMetricType:
+		if _, ok := s.m[m.ID]; !ok {
+			s.m[m.ID] = m
+		} else {
+			*s.m[m.ID].Counter += *m.Counter
+		}
+	case metrics.GaugeMetricType:
+		s.m[m.ID] = m
+	}
+
 	return nil
 }

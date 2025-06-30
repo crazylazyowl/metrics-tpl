@@ -11,7 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func NewRouter(metrics *metrics.Usecase, ping *ping.PingUsecase) http.Handler {
+func NewRouter(metrics *metrics.MetricUsecase, ping *ping.PingUsecase) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Mount("/", api.NewMetricsRouter(metrics))

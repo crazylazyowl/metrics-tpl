@@ -9,12 +9,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type snapshot struct {
-	Counters map[string]int64   `json:"counters"`
-	Gauges   map[string]float64 `json:"gauges"`
-}
-
-func (s *MemStorage) restoreFromFile(path string) error {
+func (s *MemStorage) restoreFromFile(ctx context.Context, path string) error {
 	logger := log.With().Str("path", path).Logger()
 
 	logger.Debug().Msg("restore from backup")
@@ -25,18 +20,11 @@ func (s *MemStorage) restoreFromFile(path string) error {
 	}
 	defer f.Close()
 
-	var snapshot snapshot
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	if err := json.NewDecoder(f).Decode(&snapshot); err != nil {
+	if err := json.NewDecoder(f).Decode(&s.m); err != nil {
 		return err
-	}
-
-	for key, value := range snapshot.Counters {
-		s.counters.Update(key, value)
-	}
-
-	for key, value := range snapshot.Gauges {
-		s.gauges.Set(key, value)
 	}
 
 	return nil
@@ -74,11 +62,10 @@ func (s *MemStorage) dump(ctx context.Context, path string) error {
 	}
 	defer f.Close()
 
-	snapshot := snapshot{
-		Counters: s.GetCounters(ctx),
-		Gauges:   s.GetGauges(ctx),
-	}
-	if err := json.NewEncoder(f).Encode(&snapshot); err != nil {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if err := json.NewEncoder(f).Encode(&s.m); err != nil {
 		return err
 	}
 
