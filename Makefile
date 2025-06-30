@@ -1,5 +1,6 @@
 PROJECT=github.com/crazylazyowl/metrics-tpl
 
+
 build: #### Build the server and agent binaries.
 	go build -o ./bins/server ./cmd/server
 	go build -o ./bins/agent ./cmd/agent
@@ -8,7 +9,6 @@ tools: #### Install all necessary tools.
 	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 	go install github.com/golang/mock/mockgen@latest
 	go get github.com/golang/mock
-
 
 
 test_mock: #### Generate mock interfaces.
