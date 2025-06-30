@@ -54,19 +54,20 @@ func (api *MetricsAPI) GetMetric(w http.ResponseWriter, r *http.Request) {
 	metric, err := api.metrics.GetMetric(metric)
 	if err != nil {
 		switch {
-		case errors.As(err, &metrics.ErrMetricUsecase{}): // TODO: handle this error properly
+		case errors.Is(err, metrics.ErrUnknownMetricID):
 			errNotFound(w, err)
+		case errors.As(err, &metrics.ErrInvalidMetric{}):
+			errBadRequest(w, err)
 		default:
 			errInternalServerError(w, err)
 		}
 		return
 	}
+	w.WriteHeader(http.StatusOK)
 	switch metric.Type {
 	case metrics.CounterMetricType:
-		w.WriteHeader(http.StatusOK)
 		fmt.Fprintf(w, "%d", *metric.Counter)
 	case metrics.GaugeMetricType:
-		w.WriteHeader(http.StatusOK)
 		fmt.Fprintf(w, "%s", strconv.FormatFloat(*metric.Gauge, 'f', -1, 64))
 	}
 }
@@ -97,9 +98,9 @@ func (api *MetricsAPI) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := api.metrics.UpdateMetric(metric); err != nil {
-		switch err {
-		case metrics.ErrUnknownMetricID:
-			errNotFound(w, err)
+		switch {
+		case errors.As(err, &metrics.ErrInvalidMetric{}):
+			errBadRequest(w, err)
 		default:
 			errInternalServerError(w, err)
 		}
@@ -117,8 +118,10 @@ func (api *MetricsAPI) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 	metric, err := api.metrics.GetMetric(metric)
 	if err != nil {
 		switch {
-		case errors.As(err, &metrics.ErrMetricUsecase{}): // TODO: handle this error properly
+		case errors.Is(err, metrics.ErrUnknownMetricID):
 			errNotFound(w, err)
+		case errors.As(err, &metrics.ErrInvalidMetric{}):
+			errBadRequest(w, err)
 		default:
 			errInternalServerError(w, err)
 		}
@@ -133,9 +136,10 @@ func (api *MetricsAPI) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) 
 		errBadRequest(w, err)
 		return
 	}
+	// TODO: race condition between UpdateMetric and GetMetric
 	if err := api.metrics.UpdateMetric(metric); err != nil {
 		switch {
-		case errors.As(err, &metrics.ErrMetricUsecase{}): // TODO: handle this error properly
+		case errors.As(err, &metrics.ErrInvalidMetric{}):
 			errBadRequest(w, err)
 		default:
 			errInternalServerError(w, err)
@@ -145,7 +149,7 @@ func (api *MetricsAPI) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) 
 	metric, err := api.metrics.GetMetric(metric)
 	if err != nil {
 		switch {
-		case errors.As(err, &metrics.ErrMetricUsecase{}): // TODO: handle this error properly
+		case errors.As(err, &metrics.ErrInvalidMetric{}):
 			errNotFound(w, err)
 		default:
 			errInternalServerError(w, err)

@@ -103,9 +103,9 @@ func monitor(ctx context.Context, conf *config) error {
 }
 
 func report(url string, metric *metrics.Metric) error {
-	if err := metric.Validate(); err != nil {
-		return err
-	}
+	// if err := metric.Validate(); err != nil {
+	// 	return err
+	// }
 
 	data, err := json.Marshal(metric)
 	if err != nil {

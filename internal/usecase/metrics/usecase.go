@@ -54,6 +54,9 @@ func (u *Usecase) GetGauge(name string) (float64, error) {
 
 // GetMetric returns the metric by its ID and type.
 func (u *Usecase) GetMetric(m Metric) (Metric, error) {
+	if m.ID == "" {
+		return Metric{}, ErrEmptyMetricID
+	}
 	switch m.Type {
 	case CounterMetricType:
 		value, err := u.storage.GetCounter(m.ID)
@@ -75,20 +78,22 @@ func (u *Usecase) GetMetric(m Metric) (Metric, error) {
 
 // UpdateMetric updates the metric value based on its type and name.
 func (u *Usecase) UpdateMetric(m Metric) error {
-	if err := m.Validate(); err != nil {
-		return err
+	if m.ID == "" {
+		return ErrEmptyMetricID
 	}
 	switch m.Type {
 	case CounterMetricType:
 		if m.Counter == nil {
-			return ErrMetricValue
+			return ErrInvalidCounterValue
 		}
 		return u.storage.UpdateCounter(m.ID, *m.Counter)
 	case GaugeMetricType:
 		if m.Gauge == nil {
-			return ErrMetricValue
+			return ErrInvalidGaugeValue
 		}
 		return u.storage.UpdateGauge(m.ID, *m.Gauge)
+	default:
+		return ErrUnknownMetricType
 	}
 	return nil
 }
