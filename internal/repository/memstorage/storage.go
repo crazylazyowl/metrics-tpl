@@ -51,10 +51,10 @@ func New(ctx context.Context, opts Options) (*MemStorage, error) {
 	return storage, nil
 }
 
-func (s *MemStorage) Close() error {
+func (s *MemStorage) Close(ctx context.Context) error {
 	logger := log.With().Str("path", s.opts.BackupPath).Logger()
 	logger.Debug().Msg("closing storage")
-	return s.dump(s.opts.BackupPath)
+	return s.dump(ctx, s.opts.BackupPath)
 }
 
 func (s *MemStorage) GetCounters(ctx context.Context) map[string]int64 {

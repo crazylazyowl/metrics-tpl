@@ -36,24 +36,6 @@ func (u *Usecase) GetMetrics(ctx context.Context) Metrics {
 	}
 }
 
-// GetCounterSum returns the value for the specified counter.
-func (u *Usecase) GetCounterSum(ctx context.Context, name string) (int64, error) {
-	value, err := u.storage.GetCounter(ctx, name)
-	if err != nil {
-		return 0, err
-	}
-	return value, nil
-}
-
-// GetGauge returnes the value for the specified gauge.
-func (u *Usecase) GetGauge(ctx context.Context, name string) (float64, error) {
-	value, err := u.storage.GetGauge(ctx, name)
-	if err != nil {
-		return 0, err
-	}
-	return value, nil
-}
-
 // GetMetric returns the metric by its ID and type.
 func (u *Usecase) GetMetric(ctx context.Context, m Metric) (Metric, error) {
 	if m.ID == "" {
