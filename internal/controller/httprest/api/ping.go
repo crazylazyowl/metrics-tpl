@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/crazylazyowl/metrics-tpl/internal/usecase/ping"
+	"github.com/go-chi/chi/v5"
 )
 
 type PingAPI struct {
@@ -17,8 +18,8 @@ func NewPingAPI(ping *ping.PingUsecase) *PingAPI {
 func NewPingRouter(ping *ping.PingUsecase) http.Handler {
 	api := NewPingAPI(ping)
 
-	r := http.NewServeMux()
-	r.HandleFunc("/", api.Ping)
+	r := chi.NewRouter()
+	r.Get("/", api.Ping)
 
 	return r
 }
