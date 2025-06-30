@@ -1,39 +1,57 @@
 package api
 
-// func TestAPI_UpdateMetric(t *testing.T) {
-// 	repository, _ := memstorage.New(context.TODO(), memstorage.Options{
-// 		Restore:        false,
-// 		BackupPath:     "dump.json",
-// 		BackupInterval: time.Duration(1000) * time.Second,
-// 	})
-// 	usecase := metrics.New(repository)
-// 	router := NewMetricsRouter(usecase)
-// 	server := httptest.NewServer(router)
+import (
+	"net/http"
+	"net/http/httptest"
+	"testing"
 
-// 	type want struct {
-// 		status int
-// 	}
-// 	tests := []struct {
-// 		method   string
-// 		endpoint string
-// 		want     want
-// 	}{
-// 		{http.MethodPost, "/update/counter/", want{http.StatusNotFound}},
-// 		{http.MethodPost, "/update/gauge/", want{http.StatusNotFound}},
-// 		{http.MethodPost, "/update/gauge/testGauge/100", want{http.StatusOK}},
-// 		{http.MethodPost, "/update/unknown/testCounter/111", want{http.StatusBadRequest}},
-// 	}
+	"github.com/crazylazyowl/metrics-tpl/internal/controller/httprest/api/mocks"
+	"github.com/crazylazyowl/metrics-tpl/internal/usecase/metrics"
+	"github.com/go-resty/resty/v2"
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/require"
+)
 
-// 	for _, tt := range tests {
-// 		t.Run("", func(t *testing.T) {
-// 			req := resty.New().R()
-// 			req.Method = tt.method
-// 			req.URL = server.URL + tt.endpoint
+func TestAPI_UpdateMetric(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-// 			resp, err := req.Send()
-// 			require.NoError(t, err)
+	registry := mocks.NewMockMetricRegistry(ctrl)
+	usecase := metrics.New(registry)
+	router := NewMetricsRouter(usecase)
+	server := httptest.NewServer(router)
+	client := resty.New().SetBaseURL(server.URL)
 
-// 			assert.Equal(t, tt.want.status, resp.StatusCode())
-// 		})
-// 	}
-// }
+	type mock struct {
+		err   error
+		times int
+	}
+	type want struct {
+		status int
+	}
+	tests := []struct {
+		name     string
+		endpoint string
+		mock     mock
+		want     want
+	}{
+		{"Unknown counter metric", "/update/counter/", mock{nil, 0}, want{http.StatusNotFound}},
+		{"Unknown gauge metric", "/update/gauge/", mock{nil, 0}, want{http.StatusNotFound}},
+		{"Unknown metric type", "/update/unknown/testCounter/111", mock{nil, 0}, want{http.StatusBadRequest}},
+		{"Gauge update", "/update/gauge/testGauge/100", mock{nil, 1}, want{http.StatusOK}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			registry.EXPECT().
+				Update(gomock.Any(), gomock.Any()).
+				Return(tt.mock.err).
+				Times(tt.mock.times)
+
+			resp, err := client.R().Post(tt.endpoint)
+			require.NoError(t, err)
+
+			require.Equal(t, tt.want.status, resp.StatusCode())
+		})
+	}
+}

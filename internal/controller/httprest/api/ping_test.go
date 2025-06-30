@@ -20,29 +20,33 @@ func TestPing_Ping(t *testing.T) {
 	usecase := ping.New(repository)
 	router := NewPingRouter(usecase)
 	server := httptest.NewServer(router)
+	client := resty.New().SetBaseURL(server.URL)
 
-	c := resty.New()
-	c.SetBaseURL(server.URL)
-
-	tests := []struct {
-		name   string
-		err    error
+	type mock struct {
+		err error
+	}
+	type want struct {
 		status int
+	}
+	tests := []struct {
+		name string
+		mock mock
+		want want
 	}{
 		{
-			"Ping success", nil, 200,
+			"Ping success", mock{err: nil}, want{status: 200},
 		},
 		{
-			"Ping error", errors.New(""), 500,
+			"Ping error", mock{err: errors.New("")}, want{status: 500},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repository.EXPECT().Ping(gomock.Any()).Return(tt.err).Times(1)
-			resp, err := c.R().Get("/")
+			repository.EXPECT().Ping(gomock.Any()).Return(tt.mock.err).Times(1)
+			resp, err := client.R().Get("/")
 			require.NoError(t, err)
-			require.Equal(t, tt.status, resp.StatusCode())
+			require.Equal(t, tt.want.status, resp.StatusCode())
 		})
 	}
 }
