@@ -92,8 +92,6 @@ func (u *Usecase) UpdateMetric(m Metric) error {
 			return ErrInvalidGaugeValue
 		}
 		return u.storage.UpdateGauge(m.ID, *m.Gauge)
-	default:
-		return ErrUnknownMetricType
 	}
-	return nil
+	return ErrUnknownMetricType
 }
