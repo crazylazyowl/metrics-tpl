@@ -33,6 +33,14 @@ func (u *MetricUsecase) Metrics(ctx context.Context) ([]Metric, error) {
 }
 
 func (u *MetricUsecase) Metric(ctx context.Context, m Metric) (Metric, error) {
+	if m.ID == "" {
+		return Metric{}, ErrEmptyMetricID
+	}
+	switch m.Type {
+	case CounterMetricType, GaugeMetricType:
+	default:
+		return Metric{}, ErrUnknownMetricType
+	}
 	metric, err := u.reg.FetchOne(ctx, m)
 	if err != nil {
 		return Metric{}, err
@@ -41,6 +49,21 @@ func (u *MetricUsecase) Metric(ctx context.Context, m Metric) (Metric, error) {
 }
 
 func (u *MetricUsecase) Update(ctx context.Context, m Metric) error {
+	if m.ID == "" {
+		return ErrEmptyMetricID
+	}
+	switch m.Type {
+	case CounterMetricType:
+		if m.Counter == nil {
+			return ErrInvalidCounterValue
+		}
+	case GaugeMetricType:
+		if m.Gauge == nil {
+			return ErrInvalidGaugeValue
+		}
+	default:
+		return ErrUnknownMetricType
+	}
 	if err := u.reg.Update(ctx, m); err != nil {
 		return err
 	}

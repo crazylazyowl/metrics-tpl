@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAPI_UpdateMetric(t *testing.T) {
+func TestMetrics_Update(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -31,14 +31,31 @@ func TestAPI_UpdateMetric(t *testing.T) {
 	}
 	tests := []struct {
 		name     string
+		method   string
 		endpoint string
 		mock     mock
 		want     want
 	}{
-		{"Unknown counter metric", "/update/counter/", mock{nil, 0}, want{http.StatusNotFound}},
-		{"Unknown gauge metric", "/update/gauge/", mock{nil, 0}, want{http.StatusNotFound}},
-		{"Unknown metric type", "/update/unknown/testCounter/111", mock{nil, 0}, want{http.StatusBadRequest}},
-		{"Gauge update", "/update/gauge/testGauge/100", mock{nil, 1}, want{http.StatusOK}},
+		{
+			"Unknown counter metric", http.MethodPost, "/update/counter/",
+			mock{nil, 0},
+			want{http.StatusNotFound},
+		},
+		{
+			"Unknown gauge metric", http.MethodPost, "/update/gauge/",
+			mock{nil, 0},
+			want{http.StatusNotFound},
+		},
+		{
+			"Unknown metric type", http.MethodPost, "/update/unknown/testCounter/111",
+			mock{nil, 0},
+			want{http.StatusBadRequest},
+		},
+		{
+			"Gauge update", http.MethodPost, "/update/gauge/testGauge/100",
+			mock{nil, 1},
+			want{http.StatusOK},
+		},
 	}
 
 	for _, tt := range tests {
@@ -48,7 +65,7 @@ func TestAPI_UpdateMetric(t *testing.T) {
 				Return(tt.mock.err).
 				Times(tt.mock.times)
 
-			resp, err := client.R().Post(tt.endpoint)
+			resp, err := client.R().Execute(tt.method, tt.endpoint)
 			require.NoError(t, err)
 
 			require.Equal(t, tt.want.status, resp.StatusCode())

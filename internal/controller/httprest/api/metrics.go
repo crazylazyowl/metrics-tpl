@@ -80,7 +80,7 @@ func (api *MetricsAPI) GetMetric(w http.ResponseWriter, r *http.Request) {
 	metric, err := api.metrics.Metric(r.Context(), metric)
 	if err != nil {
 		switch {
-		case errors.Is(err, metrics.ErrUnknownMetricID):
+		case errors.Is(err, metrics.ErrNotFound):
 			errNotFound(w, err)
 		case errors.As(err, &metrics.ErrInvalidMetric{}):
 			errBadRequest(w, err)
@@ -144,7 +144,7 @@ func (api *MetricsAPI) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 	metric, err := api.metrics.Metric(r.Context(), metric)
 	if err != nil {
 		switch {
-		case errors.Is(err, metrics.ErrUnknownMetricID):
+		case errors.Is(err, metrics.ErrNotFound):
 			errNotFound(w, err)
 		case errors.As(err, &metrics.ErrInvalidMetric{}):
 			errBadRequest(w, err)

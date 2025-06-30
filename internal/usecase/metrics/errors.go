@@ -9,16 +9,6 @@ var (
 	ErrNotFound = errors.New("metric not found")
 )
 
-type ErrUnknownMetric struct{}
-
-func (e ErrUnknownMetric) Error() string {
-	return "metric error"
-}
-
-var (
-	ErrUnknownMetricID = fmt.Errorf("%w: unknown metric id", ErrUnknownMetric{})
-)
-
 type ErrInvalidMetric struct{}
 
 func (e ErrInvalidMetric) Error() string {
