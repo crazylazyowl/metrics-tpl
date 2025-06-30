@@ -40,7 +40,7 @@ func TestPing_Ping(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repository.EXPECT().Ping(gomock.Any()).Return(tt.err).Times(1)
-			resp, err := c.R().Get("/ping")
+			resp, err := c.R().Get("/")
 			require.NoError(t, err)
 			require.Equal(t, tt.status, resp.StatusCode())
 		})
