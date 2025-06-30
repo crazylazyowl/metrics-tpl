@@ -57,15 +57,15 @@ func (s *MemStorage) Close() error {
 	return s.dump(s.opts.BackupPath)
 }
 
-func (s *MemStorage) GetCounters() map[string]int64 {
+func (s *MemStorage) GetCounters(ctx context.Context) map[string]int64 {
 	return s.counters.Copy()
 }
 
-func (s *MemStorage) GetGauges() map[string]float64 {
+func (s *MemStorage) GetGauges(ctx context.Context) map[string]float64 {
 	return s.gauges.Copy()
 }
 
-func (s *MemStorage) GetCounter(name string) (int64, error) {
+func (s *MemStorage) GetCounter(ctx context.Context, name string) (int64, error) {
 	value, found := s.counters.Get(name)
 	if !found {
 		return 0, metrics.ErrUnknownMetricID
@@ -73,7 +73,7 @@ func (s *MemStorage) GetCounter(name string) (int64, error) {
 	return value, nil
 }
 
-func (s *MemStorage) GetGauge(name string) (float64, error) {
+func (s *MemStorage) GetGauge(ctx context.Context, name string) (float64, error) {
 	value, found := s.gauges.Get(name)
 	if !found {
 		return 0, metrics.ErrUnknownMetricID
@@ -81,12 +81,12 @@ func (s *MemStorage) GetGauge(name string) (float64, error) {
 	return value, nil
 }
 
-func (s *MemStorage) UpdateCounter(name string, value int64) error {
+func (s *MemStorage) UpdateCounter(ctx context.Context, name string, value int64) error {
 	s.counters.Update(name, value)
 	return nil
 }
 
-func (s *MemStorage) UpdateGauge(name string, value float64) error {
+func (s *MemStorage) UpdateGauge(ctx context.Context, name string, value float64) error {
 	s.gauges.Set(name, value)
 	return nil
 }

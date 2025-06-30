@@ -40,7 +40,7 @@ func main() {
 		logger.Err(err).Msg("failed to create memstorage")
 		return
 	}
-	defer memStor.Close()
+	defer memStor.Close(ctx)
 
 	pgStor, err := postgres.NewPostgresStorage(postgres.Options{
 		DNS: conf.db.dns,

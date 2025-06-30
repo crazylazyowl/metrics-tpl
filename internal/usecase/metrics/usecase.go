@@ -1,12 +1,14 @@
 package metrics
 
+import "context"
+
 type MetricsStorage interface {
-	GetCounter(name string) (int64, error)
-	GetGauge(name string) (float64, error)
-	GetCounters() map[string]int64
-	GetGauges() map[string]float64
-	UpdateCounter(name string, value int64) error
-	UpdateGauge(name string, value float64) error
+	GetCounter(ctx context.Context, name string) (int64, error)
+	GetGauge(ctx context.Context, name string) (float64, error)
+	GetCounters(ctx context.Context) map[string]int64
+	GetGauges(ctx context.Context) map[string]float64
+	UpdateCounter(ctx context.Context, name string, value int64) error
+	UpdateGauge(ctx context.Context, name string, value float64) error
 }
 
 type Usecase struct {
@@ -27,16 +29,16 @@ type Metrics struct {
 	Gauges   map[string]float64
 }
 
-func (u *Usecase) GetMetrics() Metrics {
+func (u *Usecase) GetMetrics(ctx context.Context) Metrics {
 	return Metrics{
-		Counters: u.storage.GetCounters(),
-		Gauges:   u.storage.GetGauges(),
+		Counters: u.storage.GetCounters(ctx),
+		Gauges:   u.storage.GetGauges(ctx),
 	}
 }
 
 // GetCounterSum returns the value for the specified counter.
-func (u *Usecase) GetCounterSum(name string) (int64, error) {
-	value, err := u.storage.GetCounter(name)
+func (u *Usecase) GetCounterSum(ctx context.Context, name string) (int64, error) {
+	value, err := u.storage.GetCounter(ctx, name)
 	if err != nil {
 		return 0, err
 	}
@@ -44,8 +46,8 @@ func (u *Usecase) GetCounterSum(name string) (int64, error) {
 }
 
 // GetGauge returnes the value for the specified gauge.
-func (u *Usecase) GetGauge(name string) (float64, error) {
-	value, err := u.storage.GetGauge(name)
+func (u *Usecase) GetGauge(ctx context.Context, name string) (float64, error) {
+	value, err := u.storage.GetGauge(ctx, name)
 	if err != nil {
 		return 0, err
 	}
@@ -53,19 +55,19 @@ func (u *Usecase) GetGauge(name string) (float64, error) {
 }
 
 // GetMetric returns the metric by its ID and type.
-func (u *Usecase) GetMetric(m Metric) (Metric, error) {
+func (u *Usecase) GetMetric(ctx context.Context, m Metric) (Metric, error) {
 	if m.ID == "" {
 		return Metric{}, ErrEmptyMetricID
 	}
 	switch m.Type {
 	case CounterMetricType:
-		value, err := u.storage.GetCounter(m.ID)
+		value, err := u.storage.GetCounter(ctx, m.ID)
 		if err != nil {
 			return Metric{}, err
 		}
 		m.Counter = &value
 	case GaugeMetricType:
-		value, err := u.storage.GetGauge(m.ID)
+		value, err := u.storage.GetGauge(ctx, m.ID)
 		if err != nil {
 			return Metric{}, err
 		}
@@ -77,7 +79,7 @@ func (u *Usecase) GetMetric(m Metric) (Metric, error) {
 }
 
 // UpdateMetric updates the metric value based on its type and name.
-func (u *Usecase) UpdateMetric(m Metric) error {
+func (u *Usecase) UpdateMetric(ctx context.Context, m Metric) error {
 	if m.ID == "" {
 		return ErrEmptyMetricID
 	}
@@ -86,12 +88,12 @@ func (u *Usecase) UpdateMetric(m Metric) error {
 		if m.Counter == nil {
 			return ErrInvalidCounterValue
 		}
-		return u.storage.UpdateCounter(m.ID, *m.Counter)
+		return u.storage.UpdateCounter(ctx, m.ID, *m.Counter)
 	case GaugeMetricType:
 		if m.Gauge == nil {
 			return ErrInvalidGaugeValue
 		}
-		return u.storage.UpdateGauge(m.ID, *m.Gauge)
+		return u.storage.UpdateGauge(ctx, m.ID, *m.Gauge)
 	}
 	return ErrUnknownMetricType
 }

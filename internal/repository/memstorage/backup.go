@@ -60,14 +60,14 @@ func (s *MemStorage) backupToFile(ctx context.Context, path string, dur time.Dur
 			return ctx.Err()
 		case <-t.C:
 			logger.Debug().Msg("backup")
-			if err := s.dump(path); err != nil {
+			if err := s.dump(ctx, path); err != nil {
 				logger.Error().Err(err).Msg("failed to backup storage")
 			}
 		}
 	}
 }
 
-func (s *MemStorage) dump(path string) error {
+func (s *MemStorage) dump(ctx context.Context, path string) error {
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		return err
@@ -75,8 +75,8 @@ func (s *MemStorage) dump(path string) error {
 	defer f.Close()
 
 	snapshot := snapshot{
-		Counters: s.GetCounters(),
-		Gauges:   s.GetGauges(),
+		Counters: s.GetCounters(ctx),
+		Gauges:   s.GetGauges(ctx),
 	}
 	if err := json.NewEncoder(f).Encode(&snapshot); err != nil {
 		return err

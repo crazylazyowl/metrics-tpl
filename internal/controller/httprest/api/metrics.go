@@ -49,7 +49,7 @@ func NewMetricsRouter(metrics *metrics.Usecase) http.Handler {
 }
 
 func (api *MetricsAPI) GetMetrics(w http.ResponseWriter, r *http.Request) {
-	metrics := api.metrics.GetMetrics()
+	metrics := api.metrics.GetMetrics(r.Context())
 
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(http.StatusOK)
@@ -79,7 +79,7 @@ func (api *MetricsAPI) GetMetric(w http.ResponseWriter, r *http.Request) {
 		ID:   chi.URLParam(r, "metric"),
 		Type: chi.URLParam(r, "type"),
 	}
-	metric, err := api.metrics.GetMetric(metric)
+	metric, err := api.metrics.GetMetric(r.Context(), metric)
 	if err != nil {
 		switch {
 		case errors.Is(err, metrics.ErrUnknownMetricID):
@@ -125,7 +125,7 @@ func (api *MetricsAPI) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 		errBadRequest(w, metrics.ErrUnknownMetricType)
 		return
 	}
-	if err := api.metrics.UpdateMetric(metric); err != nil {
+	if err := api.metrics.UpdateMetric(r.Context(), metric); err != nil {
 		switch {
 		case errors.As(err, &metrics.ErrInvalidMetric{}):
 			errBadRequest(w, err)
@@ -143,7 +143,7 @@ func (api *MetricsAPI) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 		errBadRequest(w, err)
 		return
 	}
-	metric, err := api.metrics.GetMetric(metric)
+	metric, err := api.metrics.GetMetric(r.Context(), metric)
 	if err != nil {
 		switch {
 		case errors.Is(err, metrics.ErrUnknownMetricID):
@@ -164,8 +164,9 @@ func (api *MetricsAPI) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) 
 		errBadRequest(w, err)
 		return
 	}
+	ctx := r.Context()
 	// TODO: race condition between UpdateMetric and GetMetric
-	if err := api.metrics.UpdateMetric(metric); err != nil {
+	if err := api.metrics.UpdateMetric(ctx, metric); err != nil {
 		switch {
 		case errors.As(err, &metrics.ErrInvalidMetric{}):
 			errBadRequest(w, err)
@@ -174,7 +175,7 @@ func (api *MetricsAPI) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) 
 		}
 		return
 	}
-	metric, err := api.metrics.GetMetric(metric)
+	metric, err := api.metrics.GetMetric(ctx, metric)
 	if err != nil {
 		switch {
 		case errors.As(err, &metrics.ErrInvalidMetric{}):
