@@ -14,6 +14,15 @@ func NewPingAPI(ping *ping.PingUsecase) *PingAPI {
 	return &PingAPI{ping: ping}
 }
 
+func NewPingRouter(ping *ping.PingUsecase) http.Handler {
+	api := NewPingAPI(ping)
+
+	r := http.NewServeMux()
+	r.HandleFunc("/", api.Ping)
+
+	return r
+}
+
 func (api *PingAPI) Ping(w http.ResponseWriter, r *http.Request) {
 	if err := api.ping.Ping(r.Context()); err != nil {
 		errInternalServerError(w, err)
