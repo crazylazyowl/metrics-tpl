@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"math/rand/v2"
 	"net/http"
@@ -10,12 +13,14 @@ import (
 	"runtime"
 	"syscall"
 	"time"
+
+	"github.com/crazylazyowl/metrics-tpl/internal/usecase/metrics"
 )
 
 const (
-	// baseURL    = "http://localhost:8080/update"
-	gaugeURL   = "http://%s/update/gauge/%s/%f"
-	counterURL = "http://%s/update/counter/%s/%d"
+// baseURL    = "http://localhost:8080/update"
+// gaugeURL   = "http://%s/update/gauge/%s/%f"
+// counterURL = "http://%s/update/counter/%s/%d"
 )
 
 func main() {
@@ -32,8 +37,8 @@ func main() {
 
 func monitor(ctx context.Context, conf *config) error {
 	gauge := make(map[string]float64)
-	var counter uint64
-
+	var counter int64
+	url := fmt.Sprintf("http://%s/update/", conf.address)
 	pollTicker := time.NewTicker(time.Duration(conf.pollInterval) * time.Second)
 	reportTicker := time.NewTicker(time.Duration(conf.reportInterval) * time.Second)
 	for {
@@ -76,24 +81,58 @@ func monitor(ctx context.Context, conf *config) error {
 		case <-reportTicker.C:
 			log.Println("send metrics")
 			for key, value := range gauge {
-				if err := report(fmt.Sprintf(gaugeURL, conf.address, key, value)); err != nil {
+				metric := metrics.Metric{
+					ID:    key,
+					Type:  metrics.GaugeMetricType,
+					Gauge: &value,
+				}
+				if err := report(url, &metric); err != nil {
 					log.Printf("failed to send %s (%f); err=%v\n", key, value, err)
 				}
 			}
-			if err := report(fmt.Sprintf(counterURL, conf.address, "PollCount", counter)); err != nil {
+			metric := metrics.Metric{
+				ID:      "PollCount",
+				Type:    metrics.CounterMetricType,
+				Counter: &counter,
+			}
+			if err := report(url, &metric); err != nil {
 				log.Printf("failed to send %s (%d); err=%v\n", "PollCount", counter, err)
 			}
 		}
 	}
 }
 
-func report(url string) error {
-	resp, err := http.Post(url, "text/plain", nil)
-	if err == nil {
-		resp.Body.Close()
-		if resp.StatusCode != 200 {
-			return fmt.Errorf("status code = %d", resp.StatusCode)
-		}
+func report(url string, metric *metrics.Metric) error {
+	// if err := metric.Validate(); err != nil {
+	// 	return err
+	// }
+
+	data, err := json.Marshal(metric)
+	if err != nil {
+		return err
 	}
-	return err
+
+	// buf := bytes.NewBuffer(nil)
+
+	// w := gzip.NewWriter(buf)
+	// w.Write(data)
+	// w.Close()
+
+	// req, _ := http.NewRequest(http.MethodPost, url, buf)
+	req, _ := http.NewRequest(http.MethodPost, url, bytes.NewReader(data))
+	req.Header.Add("Content-Type", "application/json")
+	// req.Header.Add("Content-Encoding", "gzip")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("status code = %d, data = %s", resp.StatusCode, string(body))
+	}
+
+	return nil
 }

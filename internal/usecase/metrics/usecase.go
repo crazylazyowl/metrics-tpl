@@ -1,12 +1,12 @@
 package metrics
 
 type MetricsStorage interface {
-	GetCounter(name string) ([]Counter, error)
-	GetGauge(name string) (Gauge, error)
-	GetCounters() map[string][]Counter
-	GetGauges() map[string]Gauge
-	UpdateCounter(name string, value Counter) error
-	UpdateGauge(name string, value Gauge) error
+	GetCounter(name string) (int64, error)
+	GetGauge(name string) (float64, error)
+	GetCounters() map[string]int64
+	GetGauges() map[string]float64
+	UpdateCounter(name string, value int64) error
+	UpdateGauge(name string, value float64) error
 }
 
 type Usecase struct {
@@ -17,23 +17,34 @@ func New(repo MetricsStorage) *Usecase {
 	return &Usecase{storage: repo}
 }
 
-func (u *Usecase) Metrics() (map[string][]Counter, map[string]Gauge) {
-	return u.storage.GetCounters(), u.storage.GetGauges()
+const (
+	CounterMetricType = "counter"
+	GaugeMetricType   = "gauge"
+)
+
+type Metrics struct {
+	Counters map[string]int64
+	Gauges   map[string]float64
 }
 
-func (u *Usecase) CounterSum(name string) (Counter, error) {
-	values, err := u.storage.GetCounter(name)
+func (u *Usecase) GetMetrics() Metrics {
+	return Metrics{
+		Counters: u.storage.GetCounters(),
+		Gauges:   u.storage.GetGauges(),
+	}
+}
+
+// GetCounterSum returns the value for the specified counter.
+func (u *Usecase) GetCounterSum(name string) (int64, error) {
+	value, err := u.storage.GetCounter(name)
 	if err != nil {
 		return 0, err
 	}
-	var sum Counter
-	for _, value := range values {
-		sum += value
-	}
-	return sum, nil
+	return value, nil
 }
 
-func (u *Usecase) Gauge(name string) (Gauge, error) {
+// GetGauge returnes the value for the specified gauge.
+func (u *Usecase) GetGauge(name string) (float64, error) {
 	value, err := u.storage.GetGauge(name)
 	if err != nil {
 		return 0, err
@@ -41,10 +52,46 @@ func (u *Usecase) Gauge(name string) (Gauge, error) {
 	return value, nil
 }
 
-func (u *Usecase) UpdateCounter(name string, value Counter) error {
-	return u.storage.UpdateCounter(name, value)
+// GetMetric returns the metric by its ID and type.
+func (u *Usecase) GetMetric(m Metric) (Metric, error) {
+	if m.ID == "" {
+		return Metric{}, ErrEmptyMetricID
+	}
+	switch m.Type {
+	case CounterMetricType:
+		value, err := u.storage.GetCounter(m.ID)
+		if err != nil {
+			return Metric{}, err
+		}
+		m.Counter = &value
+	case GaugeMetricType:
+		value, err := u.storage.GetGauge(m.ID)
+		if err != nil {
+			return Metric{}, err
+		}
+		m.Gauge = &value
+	default:
+		return Metric{}, ErrUnknownMetricType
+	}
+	return m, nil
 }
 
-func (u *Usecase) UpdateGauge(name string, value Gauge) error {
-	return u.storage.UpdateGauge(name, value)
+// UpdateMetric updates the metric value based on its type and name.
+func (u *Usecase) UpdateMetric(m Metric) error {
+	if m.ID == "" {
+		return ErrEmptyMetricID
+	}
+	switch m.Type {
+	case CounterMetricType:
+		if m.Counter == nil {
+			return ErrInvalidCounterValue
+		}
+		return u.storage.UpdateCounter(m.ID, *m.Counter)
+	case GaugeMetricType:
+		if m.Gauge == nil {
+			return ErrInvalidGaugeValue
+		}
+		return u.storage.UpdateGauge(m.ID, *m.Gauge)
+	}
+	return ErrUnknownMetricType
 }

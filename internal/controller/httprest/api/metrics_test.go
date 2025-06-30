@@ -1,9 +1,11 @@
-package metrics
+package api
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/crazylazyowl/metrics-tpl/internal/repository/memstorage"
 	"github.com/crazylazyowl/metrics-tpl/internal/usecase/metrics"
@@ -14,9 +16,13 @@ import (
 )
 
 func TestAPI_UpdateMetric(t *testing.T) {
-	repository := memstorage.New()
+	repository, _ := memstorage.New(context.TODO(), memstorage.Options{
+		Restore:        false,
+		BackupPath:     "dump.json",
+		BackupInterval: time.Duration(1000) * time.Second,
+	})
 	usecase := metrics.New(repository)
-	router := NewRouter(usecase)
+	router := NewMetricsRouter(usecase)
 	server := httptest.NewServer(router)
 
 	type want struct {
