@@ -43,6 +43,7 @@ func NewMetricsRouter(metrics *metrics.MetricUsecase) http.Handler {
 		r.Use(middleware.Decompress)
 		r.Post("/value/", api.GetMetricJSON)
 		r.Post("/update/", api.UpdateMetricJSON)
+		r.Post("/updates/", api.UpdateMetricsJSON)
 	})
 
 	return r
@@ -184,4 +185,22 @@ func (api *MetricsAPI) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	writeJSON(w, http.StatusOK, &metric)
+}
+
+func (api *MetricsAPI) UpdateMetricsJSON(w http.ResponseWriter, r *http.Request) {
+	var many []metrics.Metric
+	if err := readJSON(r, &many); err != nil {
+		errBadRequest(w, err)
+	}
+	ctx := r.Context()
+	if err := api.metrics.Update(ctx, many); err != nil {
+		switch {
+		case errors.As(err, &metrics.ErrInvalidMetric{}):
+			errBadRequest(w, err)
+		default:
+			errInternalServerError(w, err)
+		}
+		return
+	}
+	writeJSON(w, http.StatusOK, nil)
 }
