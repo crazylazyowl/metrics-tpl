@@ -202,5 +202,5 @@ func (api *MetricsAPI) UpdateMetricsJSON(w http.ResponseWriter, r *http.Request)
 		}
 		return
 	}
-	writeJSON(w, http.StatusOK, nil)
+	w.WriteHeader(http.StatusOK)
 }
