@@ -3,12 +3,13 @@ package metrics
 import "context"
 
 type MetricFetcher interface {
+	FetchOne(ctx context.Context, metric Metric) (Metric, error)
 	Fetch(ctx context.Context) ([]Metric, error)
-	FetchOne(ctx context.Context, m Metric) (Metric, error)
 }
 
 type MetricUpdater interface {
-	Update(ctx context.Context, m Metric) error
+	UpdateOne(ctx context.Context, metric Metric) error
+	Update(ctx context.Context, metrics []Metric) error
 }
 
 type MetricRegistry interface {
@@ -24,6 +25,18 @@ func New(reg MetricRegistry) *MetricUsecase {
 	return &MetricUsecase{reg: reg}
 }
 
+func (u *MetricUsecase) Metric(ctx context.Context, metric Metric) (Metric, error) {
+	if metric.ID == "" {
+		return Metric{}, ErrEmptyMetricID
+	}
+	switch metric.Type {
+	case CounterMetricType, GaugeMetricType:
+	default:
+		return Metric{}, ErrUnknownMetricType
+	}
+	return u.reg.FetchOne(ctx, metric)
+}
+
 func (u *MetricUsecase) Metrics(ctx context.Context) ([]Metric, error) {
 	metrics, err := u.reg.Fetch(ctx)
 	if err != nil {
@@ -32,40 +45,18 @@ func (u *MetricUsecase) Metrics(ctx context.Context) ([]Metric, error) {
 	return metrics, nil
 }
 
-func (u *MetricUsecase) Metric(ctx context.Context, m Metric) (Metric, error) {
-	if m.ID == "" {
-		return Metric{}, ErrEmptyMetricID
-	}
-	switch m.Type {
-	case CounterMetricType, GaugeMetricType:
-	default:
-		return Metric{}, ErrUnknownMetricType
-	}
-	metric, err := u.reg.FetchOne(ctx, m)
-	if err != nil {
-		return Metric{}, err
-	}
-	return metric, nil
-}
-
-func (u *MetricUsecase) Update(ctx context.Context, m Metric) error {
-	if m.ID == "" {
-		return ErrEmptyMetricID
-	}
-	switch m.Type {
-	case CounterMetricType:
-		if m.Counter == nil {
-			return ErrInvalidCounterValue
-		}
-	case GaugeMetricType:
-		if m.Gauge == nil {
-			return ErrInvalidGaugeValue
-		}
-	default:
-		return ErrUnknownMetricType
-	}
-	if err := u.reg.Update(ctx, m); err != nil {
+func (u *MetricUsecase) UpdateOne(ctx context.Context, metric Metric) error {
+	if err := metric.Validate(); err != nil {
 		return err
 	}
-	return nil
+	return u.reg.UpdateOne(ctx, metric)
+}
+
+func (u *MetricUsecase) Update(ctx context.Context, metrics []Metric) error {
+	for _, metric := range metrics {
+		if err := metric.Validate(); err != nil {
+			return err
+		}
+	}
+	return u.reg.Update(ctx, metrics)
 }

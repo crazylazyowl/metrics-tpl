@@ -66,7 +66,7 @@ func (mr *MockMetricRegistryMockRecorder) FetchOne(arg0, arg1 interface{}) *gomo
 }
 
 // Update mocks base method.
-func (m *MockMetricRegistry) Update(arg0 context.Context, arg1 metrics.Metric) error {
+func (m *MockMetricRegistry) Update(arg0 context.Context, arg1 []metrics.Metric) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Update", arg0, arg1)
 	ret0, _ := ret[0].(error)
@@ -77,6 +77,20 @@ func (m *MockMetricRegistry) Update(arg0 context.Context, arg1 metrics.Metric) e
 func (mr *MockMetricRegistryMockRecorder) Update(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockMetricRegistry)(nil).Update), arg0, arg1)
+}
+
+// UpdateOne mocks base method.
+func (m *MockMetricRegistry) UpdateOne(arg0 context.Context, arg1 metrics.Metric) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateOne", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateOne indicates an expected call of UpdateOne.
+func (mr *MockMetricRegistryMockRecorder) UpdateOne(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateOne", reflect.TypeOf((*MockMetricRegistry)(nil).UpdateOne), arg0, arg1)
 }
 
 // MockMetricFetcher is a mock of MetricFetcher interface.
@@ -156,7 +170,7 @@ func (m *MockMetricUpdater) EXPECT() *MockMetricUpdaterMockRecorder {
 }
 
 // Update mocks base method.
-func (m *MockMetricUpdater) Update(arg0 context.Context, arg1 metrics.Metric) error {
+func (m *MockMetricUpdater) Update(arg0 context.Context, arg1 []metrics.Metric) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Update", arg0, arg1)
 	ret0, _ := ret[0].(error)
@@ -167,4 +181,18 @@ func (m *MockMetricUpdater) Update(arg0 context.Context, arg1 metrics.Metric) er
 func (mr *MockMetricUpdaterMockRecorder) Update(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockMetricUpdater)(nil).Update), arg0, arg1)
+}
+
+// UpdateOne mocks base method.
+func (m *MockMetricUpdater) UpdateOne(arg0 context.Context, arg1 metrics.Metric) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateOne", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateOne indicates an expected call of UpdateOne.
+func (mr *MockMetricUpdaterMockRecorder) UpdateOne(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateOne", reflect.TypeOf((*MockMetricUpdater)(nil).UpdateOne), arg0, arg1)
 }

@@ -61,7 +61,7 @@ func TestMetrics_Update(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			registry.EXPECT().
-				Update(gomock.Any(), gomock.Any()).
+				UpdateOne(gomock.Any(), gomock.Any()).
 				Return(tt.mock.err).
 				Times(tt.mock.times)
 

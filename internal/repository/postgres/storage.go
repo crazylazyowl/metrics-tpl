@@ -81,9 +81,9 @@ func (s *PostgresStorage) FetchOne(ctx context.Context, m metrics.Metric) (metri
 	return m, nil
 }
 
-func (s *PostgresStorage) Update(ctx context.Context, m metrics.Metric) (err error) {
+func (s *PostgresStorage) UpdateOne(ctx context.Context, one metrics.Metric) (err error) {
 	var stmt *sql.Stmt
-	switch m.Type {
+	switch one.Type {
 	case metrics.CounterMetricType:
 		stmt, err = s.db.PrepareContext(ctx, `
 			INSERT INTO metrics (name, type, counter, gauge) VALUES ($1, $2, $3, $4) 
@@ -103,6 +103,10 @@ func (s *PostgresStorage) Update(ctx context.Context, m metrics.Metric) (err err
 		return
 	}
 	defer stmt.Close()
-	_, err = stmt.ExecContext(ctx, m.ID, m.Type, m.Counter, m.Gauge)
+	_, err = stmt.ExecContext(ctx, one.ID, one.Type, one.Counter, one.Gauge)
 	return
+}
+
+func (s *PostgresStorage) Update(ctx context.Context, many []metrics.Metric) error {
+	return nil
 }

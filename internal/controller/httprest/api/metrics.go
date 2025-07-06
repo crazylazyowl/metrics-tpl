@@ -123,7 +123,7 @@ func (api *MetricsAPI) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 		errBadRequest(w, metrics.ErrUnknownMetricType)
 		return
 	}
-	if err := api.metrics.Update(r.Context(), metric); err != nil {
+	if err := api.metrics.UpdateOne(r.Context(), metric); err != nil {
 		switch {
 		case errors.As(err, &metrics.ErrInvalidMetric{}):
 			errBadRequest(w, err)
@@ -164,7 +164,7 @@ func (api *MetricsAPI) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) 
 	}
 	ctx := r.Context()
 	// TODO: race condition between UpdateMetric and GetMetric
-	if err := api.metrics.Update(ctx, metric); err != nil {
+	if err := api.metrics.UpdateOne(ctx, metric); err != nil {
 		switch {
 		case errors.As(err, &metrics.ErrInvalidMetric{}):
 			errBadRequest(w, err)

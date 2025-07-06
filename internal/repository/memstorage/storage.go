@@ -85,7 +85,7 @@ func (s *MemStorage) FetchOne(ctx context.Context, m metrics.Metric) (metrics.Me
 	return metric, nil
 }
 
-func (s *MemStorage) Update(ctx context.Context, m metrics.Metric) error {
+func (s *MemStorage) UpdateOne(ctx context.Context, m metrics.Metric) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -104,5 +104,9 @@ func (s *MemStorage) Update(ctx context.Context, m metrics.Metric) error {
 }
 
 func (s *MemStorage) Ping(ctx context.Context) error {
-	return nil
+	return nil // NOTE: just a stub, isn't used
+}
+
+func (s *MemStorage) Update(ctx context.Context, many []metrics.Metric) error {
+	return nil // NOTE: just a stub, isn't used
 }
