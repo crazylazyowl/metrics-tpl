@@ -40,7 +40,7 @@ func loadConfig() (conf *config, err error) {
 	flag.IntVar(&conf.storage.backupInterval, "i", 300, "")
 	flag.StringVar(&conf.storage.backupPath, "f", "dump.json", "")
 	flag.BoolVar(&conf.storage.restore, "r", false, "")
-	flag.StringVar(&conf.db.dns, "d", "postgresql://admin:admin@localhost:5432/metrics?sslmode=disable", "database DNS")
+	flag.StringVar(&conf.db.dns, "d", "postgresql://postgres:postgres@localhost:5432/postgres?sslmode=disable", "database DNS")
 	flag.Parse()
 
 	if value := os.Getenv("ADDRESS"); value != "" {

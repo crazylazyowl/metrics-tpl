@@ -43,13 +43,14 @@ func main() {
 	defer memStor.Close(ctx)
 
 	pgStor, err := postgres.NewPostgresStorage(postgres.Options{
-		DNS: conf.db.dns,
+		DSN:        conf.db.dns,
+		Migrations: "file://migrations",
 	})
 	if err != nil {
 		logger.Err(err).Msg("failed to create postgres storage")
 		return
 	}
-	defer pgStor.Close()
+	defer pgStor.Close(ctx)
 
 	metricsUsecase := metrics.New(memStor)
 	pingUsecase := ping.New(pgStor)

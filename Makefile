@@ -11,6 +11,7 @@ tools: #### Install all necessary tools.
 	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 	go install github.com/golang/mock/mockgen@latest
 	go get github.com/golang/mock
+	go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 
 
 test_mockgen: #### Generate mock interfaces.
@@ -19,6 +20,12 @@ test_mockgen: #### Generate mock interfaces.
 
 	mockgen -package=mocks -destination=$(MOCKS)/metrics_mock.go \
 		$(PROJECT)/internal/usecase/metrics MetricRegistry,MetricFetcher,MetricUpdater
+
+
+migration_create:
+	migrate create -ext sql -dir ./migrations -seq create_metrics_table
+
+#	migrate -source file://migrations -database postgresql://admin:admin@127.0.0.1:5432/metrics?sslmode=disable up
 
 
 test: #### Run unit tests.

@@ -6,11 +6,15 @@ import (
 
 	"github.com/crazylazyowl/metrics-tpl/internal/usecase/ping"
 
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/lib/pq"
 )
 
 type Options struct {
-	DNS string
+	DSN        string
+	Migrations string
 }
 
 type PostgresStorage struct {
@@ -21,14 +25,25 @@ type PostgresStorage struct {
 var _ ping.Pinger = (*PostgresStorage)(nil)
 
 func NewPostgresStorage(opts Options) (*PostgresStorage, error) {
-	db, err := sql.Open("postgres", opts.DNS)
+	db, err := sql.Open("postgres", opts.DSN)
 	if err != nil {
 		return nil, err
 	}
-	return &PostgresStorage{db: db}, nil
+	driver, err := postgres.WithInstance(db, &postgres.Config{})
+	if err != nil {
+		return nil, err
+	}
+	m, err := migrate.NewWithDatabaseInstance(opts.Migrations, "postgres", driver)
+	if err != nil {
+		return nil, err
+	}
+	if err := m.Up(); err != nil {
+		return nil, err
+	}
+	return &PostgresStorage{db: db, opts: opts}, nil
 }
 
-func (s *PostgresStorage) Close() error {
+func (s *PostgresStorage) Close(ctx context.Context) error {
 	if s.db == nil {
 		return nil
 	}
