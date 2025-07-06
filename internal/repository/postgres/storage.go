@@ -63,9 +63,46 @@ func (s *PostgresStorage) Ping(ctx context.Context) error {
 func (s *PostgresStorage) Fetch(ctx context.Context) ([]metrics.Metric, error) {
 	return nil, nil
 }
+
 func (s *PostgresStorage) FetchOne(ctx context.Context, m metrics.Metric) (metrics.Metric, error) {
-	return metrics.Metric{}, nil
+	stmt, err := s.db.PrepareContext(ctx, `SELECT counter, gauge FROM metrics WHERE name = $1 AND type = $2;`)
+	if err != nil {
+		return metrics.Metric{}, err
+	}
+	defer stmt.Close()
+	row := stmt.QueryRowContext(ctx, m.ID, m.Type)
+	if err := row.Scan(&m.Counter, &m.Gauge); err != nil {
+		switch err {
+		case sql.ErrNoRows:
+			return metrics.Metric{}, metrics.ErrNotFound
+		}
+		return metrics.Metric{}, err
+	}
+	return m, nil
 }
-func (s *PostgresStorage) Update(ctx context.Context, m metrics.Metric) error {
-	return nil
+
+func (s *PostgresStorage) Update(ctx context.Context, m metrics.Metric) (err error) {
+	var stmt *sql.Stmt
+	switch m.Type {
+	case metrics.CounterMetricType:
+		stmt, err = s.db.PrepareContext(ctx, `
+			INSERT INTO metrics (name, type, counter, gauge) VALUES ($1, $2, $3, $4) 
+			ON CONFLICT (name, type) DO 
+				UPDATE SET counter = metrics.counter + EXCLUDED.counter;
+		`)
+	case metrics.GaugeMetricType:
+		stmt, err = s.db.PrepareContext(ctx, `
+			INSERT INTO metrics (name, type, counter, gauge) VALUES ($1, $2, $3, $4) 
+			ON CONFLICT (name, type) DO 
+				UPDATE SET gauge = EXCLUDED.gauge;
+		`)
+	default:
+		return metrics.ErrUnknownMetricType
+	}
+	if err != nil {
+		return
+	}
+	defer stmt.Close()
+	_, err = stmt.ExecContext(ctx, m.ID, m.Type, m.Counter, m.Gauge)
+	return
 }
