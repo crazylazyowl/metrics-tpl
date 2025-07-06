@@ -81,32 +81,54 @@ func (s *PostgresStorage) FetchOne(ctx context.Context, m metrics.Metric) (metri
 	return m, nil
 }
 
-func (s *PostgresStorage) UpdateOne(ctx context.Context, one metrics.Metric) (err error) {
-	var stmt *sql.Stmt
-	switch one.Type {
-	case metrics.CounterMetricType:
-		stmt, err = s.db.PrepareContext(ctx, `
-			INSERT INTO metrics (name, type, counter, gauge) VALUES ($1, $2, $3, $4) 
-			ON CONFLICT (name, type) DO 
-				UPDATE SET counter = metrics.counter + EXCLUDED.counter;
-		`)
-	case metrics.GaugeMetricType:
-		stmt, err = s.db.PrepareContext(ctx, `
-			INSERT INTO metrics (name, type, counter, gauge) VALUES ($1, $2, $3, $4) 
-			ON CONFLICT (name, type) DO 
-				UPDATE SET gauge = EXCLUDED.gauge;
-		`)
-	default:
-		return metrics.ErrUnknownMetricType
-	}
+func (s *PostgresStorage) UpdateOne(ctx context.Context, one metrics.Metric) error {
+	query, err := selectUpsertQuery(one)
 	if err != nil {
-		return
+		return err
+	}
+	stmt, err := s.db.PrepareContext(ctx, query)
+	if err != nil {
+		return err
 	}
 	defer stmt.Close()
 	_, err = stmt.ExecContext(ctx, one.ID, one.Type, one.Counter, one.Gauge)
-	return
+	return err
 }
 
 func (s *PostgresStorage) Update(ctx context.Context, many []metrics.Metric) error {
-	return nil
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	for _, one := range many {
+		query, err := selectUpsertQuery(one)
+		if err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, query, one.ID, one.Type, one.Counter, one.Gauge); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+func selectUpsertQuery(metric metrics.Metric) (query string, err error) {
+	switch metric.Type {
+	case metrics.CounterMetricType:
+		query = `
+			INSERT INTO metrics (name, type, counter, gauge) VALUES ($1, $2, $3, $4) 
+			ON CONFLICT (name, type) DO 
+				UPDATE SET counter = metrics.counter + EXCLUDED.counter;
+		`
+	case metrics.GaugeMetricType:
+		query = `
+			INSERT INTO metrics (name, type, counter, gauge) VALUES ($1, $2, $3, $4) 
+			ON CONFLICT (name, type) DO 
+				UPDATE SET gauge = EXCLUDED.gauge;
+		`
+	default:
+		err = metrics.ErrUnknownMetricType
+	}
+	return
 }
