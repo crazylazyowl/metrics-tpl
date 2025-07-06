@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"errors"
 
 	"github.com/crazylazyowl/metrics-tpl/internal/usecase/ping"
 
@@ -34,7 +35,7 @@ func NewPostgresStorage(opts Options) (*PostgresStorage, error) {
 		return nil, err
 	}
 	m, err := migrate.NewWithDatabaseInstance(opts.Migrations, "postgres", driver)
-	if err != nil {
+	if err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		return nil, err
 	}
 	if err := m.Up(); err != nil {
