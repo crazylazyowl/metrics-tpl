@@ -6,10 +6,13 @@ import (
 	"time"
 
 	"github.com/crazylazyowl/metrics-tpl/internal/usecase/metrics"
+	"github.com/crazylazyowl/metrics-tpl/internal/usecase/ping"
+
 	"github.com/rs/zerolog/log"
 )
 
 var _ metrics.MetricRegistry = (*MemStorage)(nil)
+var _ ping.Pinger = (*MemStorage)(nil)
 
 type MemStorage struct {
 	m    map[string]metrics.Metric
@@ -97,5 +100,9 @@ func (s *MemStorage) Update(ctx context.Context, m metrics.Metric) error {
 		s.m[m.ID] = m
 	}
 
+	return nil
+}
+
+func (s *MemStorage) Ping(ctx context.Context) error {
 	return nil
 }

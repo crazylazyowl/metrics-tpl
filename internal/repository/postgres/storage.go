@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
+	"github.com/crazylazyowl/metrics-tpl/internal/usecase/metrics"
 	"github.com/crazylazyowl/metrics-tpl/internal/usecase/ping"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -24,6 +25,7 @@ type PostgresStorage struct {
 }
 
 var _ ping.Pinger = (*PostgresStorage)(nil)
+var _ metrics.MetricRegistry = (*PostgresStorage)(nil)
 
 func NewPostgresStorage(opts Options) (*PostgresStorage, error) {
 	db, err := sql.Open("postgres", opts.DSN)
@@ -35,10 +37,10 @@ func NewPostgresStorage(opts Options) (*PostgresStorage, error) {
 		return nil, err
 	}
 	m, err := migrate.NewWithDatabaseInstance(opts.Migrations, "postgres", driver)
-	if err != nil && !errors.Is(err, migrate.ErrNoChange) {
+	if err != nil {
 		return nil, err
 	}
-	if err := m.Up(); err != nil {
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		return nil, err
 	}
 	return &PostgresStorage{db: db, opts: opts}, nil
@@ -55,5 +57,15 @@ func (s *PostgresStorage) Ping(ctx context.Context) error {
 	if err := s.db.PingContext(ctx); err != nil {
 		return err
 	}
+	return nil
+}
+
+func (s *PostgresStorage) Fetch(ctx context.Context) ([]metrics.Metric, error) {
+	return nil, nil
+}
+func (s *PostgresStorage) FetchOne(ctx context.Context, m metrics.Metric) (metrics.Metric, error) {
+	return metrics.Metric{}, nil
+}
+func (s *PostgresStorage) Update(ctx context.Context, m metrics.Metric) error {
 	return nil
 }

@@ -31,29 +31,37 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	memStor, err := memstorage.New(ctx, memstorage.Options{
-		Restore:        conf.storage.restore,
-		BackupPath:     conf.storage.backupPath,
-		BackupInterval: time.Duration(conf.storage.backupInterval) * time.Second,
-	})
-	if err != nil {
-		logger.Err(err).Msg("failed to create memstorage")
-		return
-	}
-	defer memStor.Close(ctx)
+	var metricsStorage metrics.MetricRegistry
+	var pingStorage ping.Pinger
 
-	pgStor, err := postgres.NewPostgresStorage(postgres.Options{
-		DSN:        conf.db.dns,
-		Migrations: "file://migrations",
-	})
-	if err != nil {
-		logger.Err(err).Msg("failed to create postgres storage")
-		return
+	if conf.db.dsn == "" {
+		logger.Debug().Msg("init memstorage")
+		stor, err := memstorage.New(ctx, memstorage.Options{
+			Restore:        conf.storage.restore,
+			BackupPath:     conf.storage.backupPath,
+			BackupInterval: time.Duration(conf.storage.backupInterval) * time.Second,
+		})
+		if err != nil {
+			logger.Err(err).Msg("failed to create memstorage")
+			return
+		}
+		defer stor.Close(ctx)
+		metricsStorage = stor
+		pingStorage = stor
+	} else {
+		logger.Debug().Msg("init postgres")
+		stor, err := postgres.NewPostgresStorage(postgres.Options{DSN: conf.db.dsn, Migrations: "file://migrations"})
+		if err != nil {
+			logger.Err(err).Msg("failed to create postgres storage")
+			return
+		}
+		defer stor.Close(ctx)
+		metricsStorage = stor
+		pingStorage = stor
 	}
-	defer pgStor.Close(ctx)
 
-	metricsUsecase := metrics.New(memStor)
-	pingUsecase := ping.New(pgStor)
+	metricsUsecase := metrics.New(metricsStorage)
+	pingUsecase := ping.New(pingStorage)
 	router := httprest.NewRouter(metricsUsecase, pingUsecase)
 	server := http.Server{
 		Addr:    conf.address,
