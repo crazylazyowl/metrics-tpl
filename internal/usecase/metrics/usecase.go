@@ -53,6 +53,9 @@ func (u *MetricUsecase) UpdateOne(ctx context.Context, metric Metric) error {
 }
 
 func (u *MetricUsecase) Update(ctx context.Context, metrics []Metric) error {
+	if len(metrics) == 0 {
+		return nil
+	}
 	for _, metric := range metrics {
 		if err := metric.Validate(); err != nil {
 			return err
