@@ -149,9 +149,9 @@ func sendRequest(req *http.Request) error {
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 
 	body, _ := io.ReadAll(resp.Body)
-	resp.Body.Close()
 
 	if resp.StatusCode != 200 {
 		return fmt.Errorf("status code = %d, data = %s", resp.StatusCode, string(body))

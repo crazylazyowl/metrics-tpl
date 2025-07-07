@@ -188,12 +188,13 @@ func (api *MetricsAPI) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) 
 }
 
 func (api *MetricsAPI) UpdateMetricsJSON(w http.ResponseWriter, r *http.Request) {
-	var many []metrics.Metric
-	if err := readJSON(r, &many); err != nil {
+	var mm []metrics.Metric
+	if err := readJSON(r, &mm); err != nil {
 		errBadRequest(w, err)
+		return
 	}
 	ctx := r.Context()
-	if err := api.metrics.Update(ctx, many); err != nil {
+	if err := api.metrics.Update(ctx, mm); err != nil {
 		switch {
 		case errors.Is(err, metrics.ErrMetricInvalid):
 			errBadRequest(w, err)
