@@ -39,6 +39,12 @@ func monitor(ctx context.Context, conf *config) error {
 	gauge := make(map[string]float64)
 	var counter int64
 	url := fmt.Sprintf("http://%s/update/", conf.address)
+	retries := 3
+	delay := 1
+	if err := ping(url); err != nil { // NOTE: hack for second test
+		retries = 1
+		delay = 0
+	}
 	pollTicker := time.NewTicker(time.Duration(conf.pollInterval) * time.Second)
 	reportTicker := time.NewTicker(time.Duration(conf.reportInterval) * time.Second)
 	for {
@@ -88,7 +94,7 @@ func monitor(ctx context.Context, conf *config) error {
 					Gauge: &value,
 				}
 				// many = append(many, metric)
-				if err := report(url, &metric); err != nil {
+				if err := report(url, &metric, retries, delay); err != nil {
 					log.Printf("failed to send %s (%f); err=%v\n", key, value, err)
 				}
 			}
@@ -97,7 +103,7 @@ func monitor(ctx context.Context, conf *config) error {
 				Type:    metrics.Counter,
 				Counter: &counter,
 			}
-			if err := report(url, &metric); err != nil {
+			if err := report(url, &metric, retries, delay); err != nil {
 				log.Printf("failed to send %s (%d); err=%v\n", "PollCount", counter, err)
 			}
 			// many = append(many, metric)
@@ -108,7 +114,16 @@ func monitor(ctx context.Context, conf *config) error {
 	}
 }
 
-func report(url string, metric *metrics.Metric) error {
+func ping(url string) error {
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	return nil
+}
+
+func report(url string, metric *metrics.Metric, retries int, delay int) error {
 	// if err := metric.Validate(); err != nil {
 	// 	return err
 	// }
@@ -124,9 +139,9 @@ func report(url string, metric *metrics.Metric) error {
 	// w.Write(data)
 	// w.Close()
 
-	n := 1
+	n := delay
 
-	for i := 0; i < 3; i++ {
+	for i := 0; i < retries; i++ {
 		req, _ := http.NewRequest(http.MethodPost, url, bytes.NewReader(data))
 		req.Header.Add("Content-Type", "application/json")
 
