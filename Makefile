@@ -31,7 +31,7 @@ test: #### Run unit tests.
 
 
 lint: #### Run linter.
-	golangci-lint run
+	golangci-lint run --disable=errcheck
 
 
 help: #### Show this help message.

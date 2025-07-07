@@ -115,13 +115,13 @@ func (s *PostgresStorage) Update(ctx context.Context, many []metrics.Metric) err
 
 func selectUpsertQuery(metric metrics.Metric) (query string, err error) {
 	switch metric.Type {
-	case metrics.CounterMetricType:
+	case metrics.Counter:
 		query = `
 			INSERT INTO metrics (name, type, counter, gauge) VALUES ($1, $2, $3, $4) 
 			ON CONFLICT (name, type) DO 
 				UPDATE SET counter = metrics.counter + EXCLUDED.counter;
 		`
-	case metrics.GaugeMetricType:
+	case metrics.Gauge:
 		query = `
 			INSERT INTO metrics (name, type, counter, gauge) VALUES ($1, $2, $3, $4) 
 			ON CONFLICT (name, type) DO 

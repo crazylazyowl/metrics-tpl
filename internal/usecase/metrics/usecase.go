@@ -30,7 +30,7 @@ func (u *MetricUsecase) Metric(ctx context.Context, metric Metric) (Metric, erro
 		return Metric{}, ErrEmptyMetricID
 	}
 	switch metric.Type {
-	case CounterMetricType, GaugeMetricType:
+	case Counter, Gauge:
 	default:
 		return Metric{}, ErrUnknownMetricType
 	}

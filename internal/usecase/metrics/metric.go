@@ -1,15 +1,17 @@
 package metrics
 
+type MetricType string
+
 const (
-	CounterMetricType = "counter"
-	GaugeMetricType   = "gauge"
+	Counter MetricType = "counter"
+	Gauge   MetricType = "gauge"
 )
 
 type Metric struct {
-	ID      string   `json:"id"`
-	Type    string   `json:"type"`
-	Counter *int64   `json:"delta,omitempty"`
-	Gauge   *float64 `json:"value,omitempty"`
+	ID      string     `json:"id"`
+	Type    MetricType `json:"type"`
+	Counter *int64     `json:"delta,omitempty"`
+	Gauge   *float64   `json:"value,omitempty"`
 }
 
 func (metric Metric) Validate() error {
@@ -17,11 +19,11 @@ func (metric Metric) Validate() error {
 		return ErrEmptyMetricID
 	}
 	switch metric.Type {
-	case CounterMetricType:
+	case Counter:
 		if metric.Counter == nil {
 			return ErrInvalidCounterValue
 		}
-	case GaugeMetricType:
+	case Gauge:
 		if metric.Gauge == nil {
 			return ErrInvalidGaugeValue
 		}

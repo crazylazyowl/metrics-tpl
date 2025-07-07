@@ -90,13 +90,13 @@ func (s *MemStorage) UpdateOne(ctx context.Context, m metrics.Metric) error {
 	defer s.mu.Unlock()
 
 	switch m.Type {
-	case metrics.CounterMetricType:
+	case metrics.Counter:
 		if _, ok := s.m[m.ID]; !ok {
 			s.m[m.ID] = m
 		} else {
 			*s.m[m.ID].Counter += *m.Counter
 		}
-	case metrics.GaugeMetricType:
+	case metrics.Gauge:
 		s.m[m.ID] = m
 	}
 

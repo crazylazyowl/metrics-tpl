@@ -84,7 +84,7 @@ func monitor(ctx context.Context, conf *config) error {
 			for key, value := range gauge {
 				metric := metrics.Metric{
 					ID:    key,
-					Type:  metrics.GaugeMetricType,
+					Type:  metrics.Gauge,
 					Gauge: &value,
 				}
 				many = append(many, metric)
@@ -94,7 +94,7 @@ func monitor(ctx context.Context, conf *config) error {
 			}
 			metric := metrics.Metric{
 				ID:      "PollCount",
-				Type:    metrics.CounterMetricType,
+				Type:    metrics.Counter,
 				Counter: &counter,
 			}
 			// if err := report(url, &metric); err != nil {

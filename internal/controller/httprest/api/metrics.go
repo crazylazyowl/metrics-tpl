@@ -63,9 +63,9 @@ func (api *MetricsAPI) GetMetrics(w http.ResponseWriter, r *http.Request) {
 
 	for _, m := range metricList {
 		switch m.Type {
-		case metrics.CounterMetricType:
+		case metrics.Counter:
 			fmt.Fprintf(w, "- %s: %d<br>", m.ID, *m.Counter)
-		case metrics.GaugeMetricType:
+		case metrics.Gauge:
 			fmt.Fprintf(w, "- %s: %s<br>", m.ID, strconv.FormatFloat(*m.Gauge, 'f', -1, 64))
 		}
 	}
@@ -76,7 +76,7 @@ func (api *MetricsAPI) GetMetrics(w http.ResponseWriter, r *http.Request) {
 func (api *MetricsAPI) GetMetric(w http.ResponseWriter, r *http.Request) {
 	metric := metrics.Metric{
 		ID:   chi.URLParam(r, "metric"),
-		Type: chi.URLParam(r, "type"),
+		Type: metrics.MetricType(chi.URLParam(r, "type")),
 	}
 	metric, err := api.metrics.Metric(r.Context(), metric)
 	if err != nil {
@@ -92,9 +92,9 @@ func (api *MetricsAPI) GetMetric(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 	switch metric.Type {
-	case metrics.CounterMetricType:
+	case metrics.Counter:
 		fmt.Fprintf(w, "%d", *metric.Counter)
-	case metrics.GaugeMetricType:
+	case metrics.Gauge:
 		fmt.Fprintf(w, "%s", strconv.FormatFloat(*metric.Gauge, 'f', -1, 64))
 	}
 }
@@ -102,18 +102,18 @@ func (api *MetricsAPI) GetMetric(w http.ResponseWriter, r *http.Request) {
 func (api *MetricsAPI) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	metric := metrics.Metric{
 		ID:   chi.URLParam(r, "metric"),
-		Type: chi.URLParam(r, "type"),
+		Type: metrics.MetricType(chi.URLParam(r, "type")),
 	}
 	value := chi.URLParam(r, "value")
 	switch metric.Type {
-	case metrics.CounterMetricType:
+	case metrics.Counter:
 		counter, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
 			errBadRequest(w, err)
 			return
 		}
 		metric.Counter = &counter
-	case metrics.GaugeMetricType:
+	case metrics.Gauge:
 		gauge, err := strconv.ParseFloat(value, 64)
 		if err != nil {
 			errBadRequest(w, err)
@@ -126,7 +126,7 @@ func (api *MetricsAPI) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := api.metrics.UpdateOne(r.Context(), metric); err != nil {
 		switch {
-		case errors.As(err, &metrics.ErrInvalidMetric{}):
+		case errors.As(err, metrics.NewInvalidMetricError()):
 			errBadRequest(w, err)
 		default:
 			errInternalServerError(w, err)
