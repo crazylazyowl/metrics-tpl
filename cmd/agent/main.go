@@ -32,7 +32,7 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	_ = monitor(ctx, conf)
+	monitor(ctx, conf)
 }
 
 func monitor(ctx context.Context, conf *config) error {
@@ -124,15 +124,32 @@ func report(url string, metric *metrics.Metric) error {
 	// w.Write(data)
 	// w.Close()
 
-	// req, _ := http.NewRequest(http.MethodPost, url, buf)
-	req, _ := http.NewRequest(http.MethodPost, url, bytes.NewReader(data))
-	req.Header.Add("Content-Type", "application/json")
-	// req.Header.Add("Content-Encoding", "gzip")
+	n := 1
 
+	for i := 0; i < 3; i++ {
+		req, _ := http.NewRequest(http.MethodPost, url, bytes.NewReader(data))
+		req.Header.Add("Content-Type", "application/json")
+
+		if err = sendRequest(req); err != nil {
+			log.Printf("retry #%d\n", i)
+			time.Sleep(time.Duration(n) * time.Second)
+			n += 2
+		} else {
+			break
+		}
+	}
+
+	return err
+}
+
+func sendRequest(req *http.Request) error {
+	// req, _ := http.NewRequest(http.MethodPost, url, buf)
+	// req.Header.Add("Content-Encoding", "gzip")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
 	}
+
 	body, _ := io.ReadAll(resp.Body)
 	resp.Body.Close()
 
