@@ -17,7 +17,6 @@ tools: #### Install all necessary tools.
 test_mockgen: #### Generate mock interfaces.
 	mockgen -package=mocks -destination=$(MOCKS)/ping_mock.go \
 		$(PROJECT)/internal/usecase/ping Pinger
-
 	mockgen -package=mocks -destination=$(MOCKS)/metrics_mock.go \
 		$(PROJECT)/internal/usecase/metrics MetricRegistry,MetricFetcher,MetricUpdater
 

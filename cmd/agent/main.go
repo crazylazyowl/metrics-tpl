@@ -108,40 +108,40 @@ func monitor(ctx context.Context, conf *config) error {
 	}
 }
 
-func report(url string, metric *metrics.Metric) error {
-	// if err := metric.Validate(); err != nil {
-	// 	return err
-	// }
+// func report(url string, metric *metrics.Metric) error {
+// 	// if err := metric.Validate(); err != nil {
+// 	// 	return err
+// 	// }
 
-	data, err := json.Marshal(metric)
-	if err != nil {
-		return err
-	}
+// 	data, err := json.Marshal(metric)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	// buf := bytes.NewBuffer(nil)
+// 	// buf := bytes.NewBuffer(nil)
 
-	// w := gzip.NewWriter(buf)
-	// w.Write(data)
-	// w.Close()
+// 	// w := gzip.NewWriter(buf)
+// 	// w.Write(data)
+// 	// w.Close()
 
-	// req, _ := http.NewRequest(http.MethodPost, url, buf)
-	req, _ := http.NewRequest(http.MethodPost, url, bytes.NewReader(data))
-	req.Header.Add("Content-Type", "application/json")
-	// req.Header.Add("Content-Encoding", "gzip")
+// 	// req, _ := http.NewRequest(http.MethodPost, url, buf)
+// 	req, _ := http.NewRequest(http.MethodPost, url, bytes.NewReader(data))
+// 	req.Header.Add("Content-Type", "application/json")
+// 	// req.Header.Add("Content-Encoding", "gzip")
 
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-	body, _ := io.ReadAll(resp.Body)
-	resp.Body.Close()
+// 	resp, err := http.DefaultClient.Do(req)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	body, _ := io.ReadAll(resp.Body)
+// 	resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		return fmt.Errorf("status code = %d, data = %s", resp.StatusCode, string(body))
-	}
+// 	if resp.StatusCode != 200 {
+// 		return fmt.Errorf("status code = %d, data = %s", resp.StatusCode, string(body))
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 func reportBulk(url string, many []metrics.Metric) error {
 	// buf := bytes.NewBuffer(nil)
@@ -156,7 +156,7 @@ func reportBulk(url string, many []metrics.Metric) error {
 		return err
 	}
 
-	log.Printf(string(data))
+	// log.Printf(string(data))
 
 	// req, _ := http.NewRequest(http.MethodPost, url, buf)
 	req, _ := http.NewRequest(http.MethodPost, url, bytes.NewReader(data))
