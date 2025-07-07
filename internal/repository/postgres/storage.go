@@ -79,6 +79,9 @@ func (s *PostgresStorage) Fetch(ctx context.Context) ([]metrics.Metric, error) {
 		}
 		mm = append(mm, m)
 	}
+	if rows.Err() != nil {
+		return nil, err
+	}
 	return mm, nil
 }
 
