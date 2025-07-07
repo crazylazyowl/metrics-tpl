@@ -5,8 +5,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/crazylazyowl/metrics-tpl/internal/controller/httprest/api/mocks"
+	"github.com/crazylazyowl/metrics-tpl/internal/mocks"
 	"github.com/crazylazyowl/metrics-tpl/internal/usecase/metrics"
+
 	"github.com/go-resty/resty/v2"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"

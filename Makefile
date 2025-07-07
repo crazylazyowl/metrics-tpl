@@ -1,5 +1,5 @@
 PROJECT=github.com/crazylazyowl/metrics-tpl
-MOCKS=./internal/controller/httprest/api/mocks
+MOCKS=./internal/usecase/mocks
 
 
 build: #### Build the server and agent binaries.
@@ -24,8 +24,6 @@ test_mockgen: #### Generate mock interfaces.
 
 migration_create:
 	migrate create -ext sql -dir ./migrations -seq create_metrics_table
-
-#	migrate -source file://migrations -database postgresql://admin:admin@127.0.0.1:5432/metrics?sslmode=disable up
 
 
 test: #### Run unit tests.
