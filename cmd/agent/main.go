@@ -38,7 +38,7 @@ func main() {
 func monitor(ctx context.Context, conf *config) error {
 	gauge := make(map[string]float64)
 	var counter int64
-	url := fmt.Sprintf("http://%s/updates/", conf.address)
+	url := fmt.Sprintf("http://%s/update/", conf.address)
 	pollTicker := time.NewTicker(time.Duration(conf.pollInterval) * time.Second)
 	reportTicker := time.NewTicker(time.Duration(conf.reportInterval) * time.Second)
 	for {

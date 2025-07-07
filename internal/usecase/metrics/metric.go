@@ -2,6 +2,10 @@ package metrics
 
 type MetricType string
 
+// func (mt MetricType) String() string {
+// 	return string(mt)
+// }
+
 const (
 	Counter MetricType = "counter"
 	Gauge   MetricType = "gauge"
