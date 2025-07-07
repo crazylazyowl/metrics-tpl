@@ -27,12 +27,12 @@ func New(reg MetricRegistry) *MetricUsecase {
 
 func (u *MetricUsecase) Metric(ctx context.Context, metric Metric) (Metric, error) {
 	if metric.ID == "" {
-		return Metric{}, ErrEmptyMetricID
+		return Metric{}, ErrMetricEmptyID
 	}
 	switch metric.Type {
 	case Counter, Gauge:
 	default:
-		return Metric{}, ErrUnknownMetricType
+		return Metric{}, ErrMetricUnknownType
 	}
 	return u.reg.FetchOne(ctx, metric)
 }

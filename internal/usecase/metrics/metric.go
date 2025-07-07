@@ -16,19 +16,19 @@ type Metric struct {
 
 func (metric Metric) Validate() error {
 	if metric.ID == "" {
-		return ErrEmptyMetricID
+		return ErrMetricEmptyID
 	}
 	switch metric.Type {
 	case Counter:
 		if metric.Counter == nil {
-			return ErrInvalidCounterValue
+			return ErrMetricInvalidCounter
 		}
 	case Gauge:
 		if metric.Gauge == nil {
-			return ErrInvalidGaugeValue
+			return ErrMetricInvalidGauge
 		}
 	default:
-		return ErrUnknownMetricType
+		return ErrMetricUnknownType
 	}
 	return nil
 }

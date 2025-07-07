@@ -79,7 +79,7 @@ func (s *MemStorage) FetchOne(ctx context.Context, m metrics.Metric) (metrics.Me
 
 	metric, ok := s.m[m.ID]
 	if !ok {
-		return metrics.Metric{}, metrics.ErrNotFound
+		return metrics.Metric{}, metrics.ErrMetricNotFound
 	}
 
 	return metric, nil

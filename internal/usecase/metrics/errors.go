@@ -5,20 +5,17 @@ import (
 	"fmt"
 )
 
-type ErrInvalidMetric struct{}
+type errMetricInvalid struct{}
 
-func NewInvalidMetricError() *ErrInvalidMetric {
-	return &ErrInvalidMetric{}
-}
-
-func (e *ErrInvalidMetric) Error() string {
-	return "invalid metric"
+func (e *errMetricInvalid) Error() string {
+	return "metric is invalid"
 }
 
 var (
-	ErrNotFound            = errors.New("metric not found")
-	ErrUnknownMetricType   = fmt.Errorf("%w: unknown type", NewInvalidMetricError())
-	ErrEmptyMetricID       = fmt.Errorf("%w: id is empty", NewInvalidMetricError())
-	ErrInvalidCounterValue = fmt.Errorf("%w: counter value is invalid", NewInvalidMetricError())
-	ErrInvalidGaugeValue   = fmt.Errorf("%w: gauge value is invalid", NewInvalidMetricError())
+	ErrMetricNotFound       = errors.New("metric not found")
+	ErrMetricInvalid        = &errMetricInvalid{}
+	ErrMetricUnknownType    = fmt.Errorf("%w: unknown type", ErrMetricInvalid)
+	ErrMetricEmptyID        = fmt.Errorf("%w: id is empty", ErrMetricInvalid)
+	ErrMetricInvalidCounter = fmt.Errorf("%w: counter value is invalid", ErrMetricInvalid)
+	ErrMetricInvalidGauge   = fmt.Errorf("%w: gauge value is invalid", ErrMetricInvalid)
 )

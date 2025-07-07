@@ -74,7 +74,7 @@ func (s *PostgresStorage) FetchOne(ctx context.Context, m metrics.Metric) (metri
 	if err := row.Scan(&m.Counter, &m.Gauge); err != nil {
 		switch err {
 		case sql.ErrNoRows:
-			return metrics.Metric{}, metrics.ErrNotFound
+			return metrics.Metric{}, metrics.ErrMetricNotFound
 		}
 		return metrics.Metric{}, err
 	}
@@ -128,7 +128,7 @@ func selectUpsertQuery(metric metrics.Metric) (query string, err error) {
 				UPDATE SET gauge = EXCLUDED.gauge;
 		`
 	default:
-		err = metrics.ErrUnknownMetricType
+		err = metrics.ErrMetricUnknownType
 	}
 	return
 }
