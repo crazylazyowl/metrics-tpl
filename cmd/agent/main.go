@@ -80,83 +80,49 @@ func monitor(ctx context.Context, conf *config) error {
 			counter++
 		case <-reportTicker.C:
 			log.Println("send metrics")
-			many := make([]metrics.Metric, 0, len(gauge)+1)
+			// many := make([]metrics.Metric, 0, len(gauge)+1)
 			for key, value := range gauge {
 				metric := metrics.Metric{
 					ID:    key,
 					Type:  metrics.Gauge,
 					Gauge: &value,
 				}
-				many = append(many, metric)
-				// if err := report(url, &metric); err != nil {
-				// 	log.Printf("failed to send %s (%f); err=%v\n", key, value, err)
-				// }
+				// many = append(many, metric)
+				if err := report(url, &metric); err != nil {
+					log.Printf("failed to send %s (%f); err=%v\n", key, value, err)
+				}
 			}
 			metric := metrics.Metric{
 				ID:      "PollCount",
 				Type:    metrics.Counter,
 				Counter: &counter,
 			}
-			// if err := report(url, &metric); err != nil {
-			// 	log.Printf("failed to send %s (%d); err=%v\n", "PollCount", counter, err)
-			// }
-			many = append(many, metric)
-			if err := reportBulk(url, many); err != nil {
-				log.Printf("failed to bulk metrics; err=%v\n", err)
+			if err := report(url, &metric); err != nil {
+				log.Printf("failed to send %s (%d); err=%v\n", "PollCount", counter, err)
 			}
+			// many = append(many, metric)
+			// if err := reportBulk(url, many); err != nil {
+			// 	log.Printf("failed to bulk metrics; err=%v\n", err)
+			// }
 		}
 	}
 }
 
-// func report(url string, metric *metrics.Metric) error {
-// 	// if err := metric.Validate(); err != nil {
-// 	// 	return err
-// 	// }
-
-// 	data, err := json.Marshal(metric)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	// buf := bytes.NewBuffer(nil)
-
-// 	// w := gzip.NewWriter(buf)
-// 	// w.Write(data)
-// 	// w.Close()
-
-// 	// req, _ := http.NewRequest(http.MethodPost, url, buf)
-// 	req, _ := http.NewRequest(http.MethodPost, url, bytes.NewReader(data))
-// 	req.Header.Add("Content-Type", "application/json")
-// 	// req.Header.Add("Content-Encoding", "gzip")
-
-// 	resp, err := http.DefaultClient.Do(req)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	body, _ := io.ReadAll(resp.Body)
-// 	resp.Body.Close()
-
-// 	if resp.StatusCode != 200 {
-// 		return fmt.Errorf("status code = %d, data = %s", resp.StatusCode, string(body))
-// 	}
-
-// 	return nil
-// }
-
-func reportBulk(url string, many []metrics.Metric) error {
-	// buf := bytes.NewBuffer(nil)
-	// w := gzip.NewWriter(buf)
-	// if err := json.NewEncoder(w).Encode(many); err != nil {
+func report(url string, metric *metrics.Metric) error {
+	// if err := metric.Validate(); err != nil {
 	// 	return err
 	// }
-	// w.Close()
 
-	data, err := json.Marshal(many)
+	data, err := json.Marshal(metric)
 	if err != nil {
 		return err
 	}
 
-	// log.Printf(string(data))
+	// buf := bytes.NewBuffer(nil)
+
+	// w := gzip.NewWriter(buf)
+	// w.Write(data)
+	// w.Close()
 
 	// req, _ := http.NewRequest(http.MethodPost, url, buf)
 	req, _ := http.NewRequest(http.MethodPost, url, bytes.NewReader(data))
@@ -175,5 +141,39 @@ func reportBulk(url string, many []metrics.Metric) error {
 	}
 
 	return nil
-
 }
+
+// func reportBulk(url string, many []metrics.Metric) error {
+// 	// buf := bytes.NewBuffer(nil)
+// 	// w := gzip.NewWriter(buf)
+// 	// if err := json.NewEncoder(w).Encode(many); err != nil {
+// 	// 	return err
+// 	// }
+// 	// w.Close()
+
+// 	data, err := json.Marshal(many)
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	// log.Printf(string(data))
+
+// 	// req, _ := http.NewRequest(http.MethodPost, url, buf)
+// 	req, _ := http.NewRequest(http.MethodPost, url, bytes.NewReader(data))
+// 	req.Header.Add("Content-Type", "application/json")
+// 	// req.Header.Add("Content-Encoding", "gzip")
+
+// 	resp, err := http.DefaultClient.Do(req)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	body, _ := io.ReadAll(resp.Body)
+// 	resp.Body.Close()
+
+// 	if resp.StatusCode != 200 {
+// 		return fmt.Errorf("status code = %d, data = %s", resp.StatusCode, string(body))
+// 	}
+
+// 	return nil
+
+// }
