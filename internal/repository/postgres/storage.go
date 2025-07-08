@@ -38,7 +38,7 @@ func NewPostgresStorage(ctx context.Context, opts Options) (*PostgresStorage, er
 		return nil, err
 	}
 	delay := 1
-	for range 3 {
+	for range 4 {
 		if err = db.PingContext(ctx); isConnectionError(err) {
 			logger.Warn().Err(err).Msg("pg ping retry")
 			time.Sleep(time.Duration(delay) * time.Second)

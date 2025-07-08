@@ -57,7 +57,7 @@ func (u *MetricUsecase) UpdateOne(ctx context.Context, metric Metric) error {
 	var err error
 	logger := log.With().Logger()
 	delay := 1
-	for range 3 {
+	for range 4 {
 		if err = u.reg.UpdateOne(ctx, metric); err != nil {
 			logger.Warn().Err(err).Msgf("retry update one")
 			time.Sleep(time.Duration(delay) * time.Second)
@@ -81,7 +81,7 @@ func (u *MetricUsecase) Update(ctx context.Context, metrics []Metric) error {
 	logger := log.With().Logger()
 	var err error
 	delay := 1
-	for range 3 {
+	for range 4 {
 		if err = u.reg.Update(ctx, metrics); err != nil {
 			logger.Warn().Err(err).Msgf("retry update many")
 			time.Sleep(time.Duration(delay) * time.Second)
