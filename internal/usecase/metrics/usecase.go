@@ -52,7 +52,17 @@ func (u *MetricUsecase) UpdateOne(ctx context.Context, metric Metric) error {
 	if err := metric.Validate(); err != nil {
 		return err
 	}
-	return u.reg.UpdateOne(ctx, metric)
+	var err error
+	delay := 1
+	for range 3 {
+		if err = u.reg.UpdateOne(ctx, metric); err != nil {
+			time.Sleep(time.Duration(delay) * time.Second)
+			delay += 2
+			continue
+		}
+		break
+	}
+	return err
 }
 
 func (u *MetricUsecase) Update(ctx context.Context, metrics []Metric) error {
@@ -65,12 +75,11 @@ func (u *MetricUsecase) Update(ctx context.Context, metrics []Metric) error {
 		}
 	}
 	var err error
-	n := 3
-	s := 1
-	for ; n > 0; n-- {
+	delay := 1
+	for range 3 {
 		if err = u.reg.Update(ctx, metrics); err != nil {
-			time.Sleep(time.Duration(s) * time.Second)
-			s += 2
+			time.Sleep(time.Duration(delay) * time.Second)
+			delay += 2
 			continue
 		}
 		break
