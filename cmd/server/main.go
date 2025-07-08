@@ -50,7 +50,7 @@ func main() {
 		pingStorage = stor
 	} else {
 		logger.Debug().Msg("init postgres")
-		stor, err := postgres.NewPostgresStorage(postgres.Options{DSN: conf.db.dsn, Migrations: "file://migrations"})
+		stor, err := postgres.NewPostgresStorage(ctx, postgres.Options{DSN: conf.db.dsn, Migrations: "file://migrations"})
 		if err != nil {
 			logger.Err(err).Msg("failed to create postgres storage")
 			return

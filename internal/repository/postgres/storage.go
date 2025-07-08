@@ -4,9 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"net"
+	"time"
 
 	"github.com/crazylazyowl/metrics-tpl/internal/usecase/metrics"
 	"github.com/crazylazyowl/metrics-tpl/internal/usecase/ping"
+	"github.com/rs/zerolog/log"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
@@ -28,11 +31,26 @@ type PostgresStorage struct {
 var _ ping.Pinger = (*PostgresStorage)(nil)
 var _ metrics.MetricRegistry = (*PostgresStorage)(nil)
 
-func NewPostgresStorage(opts Options) (*PostgresStorage, error) {
+func NewPostgresStorage(ctx context.Context, opts Options) (*PostgresStorage, error) {
+	logger := log.With().Logger()
 	db, err := sql.Open("postgres", opts.DSN)
 	if err != nil {
 		return nil, err
 	}
+	delay := 1
+	for range 3 {
+		if err = db.PingContext(ctx); isConnectionError(err) {
+			logger.Warn().Err(err).Msg("pg ping retry")
+			time.Sleep(time.Duration(delay) * time.Second)
+			delay += 2
+			continue
+		}
+		break
+	}
+	if err != nil {
+		return nil, err
+	}
+	logger.Debug().Msg("pg connection established")
 	driver, err := postgres.WithInstance(db, &postgres.Config{})
 	if err != nil {
 		return nil, err
@@ -45,6 +63,11 @@ func NewPostgresStorage(opts Options) (*PostgresStorage, error) {
 		return nil, err
 	}
 	return &PostgresStorage{db: db, opts: opts}, nil
+}
+
+func isConnectionError(err error) bool {
+	var connErr *net.OpError
+	return errors.As(err, &connErr)
 }
 
 func (s *PostgresStorage) Close(ctx context.Context) error {
