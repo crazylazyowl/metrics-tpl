@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
 	"github.com/crazylazyowl/metrics-tpl/internal/usecase/metrics"
 	"github.com/crazylazyowl/metrics-tpl/internal/usecase/ping"
@@ -11,7 +12,8 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	_ "github.com/lib/pq"
+
+	_ "github.com/jackc/pgx/v5"
 )
 
 type Options struct {
@@ -86,20 +88,39 @@ func (s *PostgresStorage) Fetch(ctx context.Context) ([]metrics.Metric, error) {
 }
 
 func (s *PostgresStorage) FetchOne(ctx context.Context, m metrics.Metric) (metrics.Metric, error) {
-	stmt, err := s.db.PrepareContext(ctx, `SELECT counter, gauge FROM metrics WHERE name = $1 AND type = $2;`)
+	var err error
+	delay := 1
+	for range 3 {
+		if err = s.tryFetchOne(ctx, &m); err == nil {
+			break
+		}
+		if errors.Is(err, metrics.ErrMetricNotFound) {
+			return metrics.Metric{}, err
+		}
+		time.Sleep(time.Duration(delay) * time.Second)
+		delay += 2
+	}
 	if err != nil {
 		return metrics.Metric{}, err
+	}
+	return m, nil
+}
+
+func (s *PostgresStorage) tryFetchOne(ctx context.Context, m *metrics.Metric) error {
+	stmt, err := s.db.PrepareContext(ctx, `SELECT counter, gauge FROM metrics WHERE name = $1 AND type = $2;`)
+	if err != nil {
+		return err
 	}
 	defer stmt.Close()
 	row := stmt.QueryRowContext(ctx, m.ID, m.Type)
 	if err := row.Scan(&m.Counter, &m.Gauge); err != nil {
 		switch err {
 		case sql.ErrNoRows:
-			return metrics.Metric{}, metrics.ErrMetricNotFound
+			return metrics.ErrMetricNotFound
 		}
-		return metrics.Metric{}, err
+		return err
 	}
-	return m, nil
+	return nil
 }
 
 func (s *PostgresStorage) UpdateOne(ctx context.Context, m metrics.Metric) error {
