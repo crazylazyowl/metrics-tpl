@@ -3,6 +3,8 @@ package metrics
 import (
 	"context"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 type MetricFetcher interface {
@@ -53,9 +55,11 @@ func (u *MetricUsecase) UpdateOne(ctx context.Context, metric Metric) error {
 		return err
 	}
 	var err error
+	logger := log.With().Logger()
 	delay := 1
 	for range 3 {
 		if err = u.reg.UpdateOne(ctx, metric); err != nil {
+			logger.Warn().Err(err).Msgf("retry update one")
 			time.Sleep(time.Duration(delay) * time.Second)
 			delay += 2
 			continue
@@ -74,10 +78,12 @@ func (u *MetricUsecase) Update(ctx context.Context, metrics []Metric) error {
 			return err
 		}
 	}
+	logger := log.With().Logger()
 	var err error
 	delay := 1
 	for range 3 {
 		if err = u.reg.Update(ctx, metrics); err != nil {
+			logger.Warn().Err(err).Msgf("retry update many")
 			time.Sleep(time.Duration(delay) * time.Second)
 			delay += 2
 			continue
