@@ -1,6 +1,9 @@
 package metrics
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 type MetricFetcher interface {
 	FetchOne(ctx context.Context, metric Metric) (Metric, error)
@@ -61,5 +64,16 @@ func (u *MetricUsecase) Update(ctx context.Context, metrics []Metric) error {
 			return err
 		}
 	}
-	return u.reg.Update(ctx, metrics)
+	var err error
+	n := 3
+	s := 1
+	for ; n > 0; n-- {
+		if err = u.reg.Update(ctx, metrics); err != nil {
+			time.Sleep(time.Duration(s) * time.Second)
+			s += 2
+			continue
+		}
+		break
+	}
+	return err
 }
