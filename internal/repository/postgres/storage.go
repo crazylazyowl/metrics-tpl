@@ -4,8 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"net"
-	"time"
 
 	"github.com/crazylazyowl/metrics-tpl/internal/usecase/metrics"
 	"github.com/crazylazyowl/metrics-tpl/internal/usecase/ping"
@@ -37,17 +35,7 @@ func NewPostgresStorage(ctx context.Context, opts Options) (*PostgresStorage, er
 	if err != nil {
 		return nil, err
 	}
-	delay := 1
-	for range 4 {
-		if err = db.PingContext(ctx); isConnectionError(err) {
-			logger.Warn().Err(err).Msg("pg ping retry")
-			time.Sleep(time.Duration(delay) * time.Second)
-			delay += 2
-			continue
-		}
-		break
-	}
-	if err != nil {
+	if err := retryOnConnectionError(ctx, func(ctx context.Context) error { return db.PingContext(ctx) }); err != nil {
 		return nil, err
 	}
 	logger.Debug().Msg("pg connection established")
@@ -63,11 +51,6 @@ func NewPostgresStorage(ctx context.Context, opts Options) (*PostgresStorage, er
 		return nil, err
 	}
 	return &PostgresStorage{db: db, opts: opts}, nil
-}
-
-func isConnectionError(err error) bool {
-	var connErr *net.OpError
-	return errors.As(err, &connErr)
 }
 
 func (s *PostgresStorage) Close(ctx context.Context) error {
