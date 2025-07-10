@@ -10,7 +10,9 @@ import (
 
 	"github.com/crazylazyowl/metrics-tpl/internal/controller/httprest"
 	"github.com/crazylazyowl/metrics-tpl/internal/repository/memstorage"
+	"github.com/crazylazyowl/metrics-tpl/internal/repository/postgres"
 	"github.com/crazylazyowl/metrics-tpl/internal/usecase/metrics"
+	"github.com/crazylazyowl/metrics-tpl/internal/usecase/ping"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -29,19 +31,38 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	storage, err := memstorage.New(ctx, memstorage.Options{
-		Restore:        conf.storage.restore,
-		BackupPath:     conf.storage.backupPath,
-		BackupInterval: time.Duration(conf.storage.backupInterval) * time.Second,
-	})
-	if err != nil {
-		logger.Err(err).Msg("failed to create memstorage")
-		return
-	}
-	defer storage.Close()
+	var metricsStorage metrics.MetricRegistry
+	var pingStorage ping.Pinger
 
-	usecase := metrics.New(storage)
-	router := httprest.NewRouter(usecase)
+	if conf.db.dsn == "" {
+		logger.Debug().Msg("init memstorage")
+		stor, err := memstorage.New(ctx, memstorage.Options{
+			Restore:        conf.storage.restore,
+			BackupPath:     conf.storage.backupPath,
+			BackupInterval: time.Duration(conf.storage.backupInterval) * time.Second,
+		})
+		if err != nil {
+			logger.Err(err).Msg("failed to create memstorage")
+			return
+		}
+		defer stor.Close(ctx)
+		metricsStorage = stor
+		pingStorage = stor
+	} else {
+		logger.Debug().Msg("init postgres")
+		stor, err := postgres.NewPostgresStorage(ctx, postgres.Options{DSN: conf.db.dsn, Migrations: "file://migrations"})
+		if err != nil {
+			logger.Err(err).Msg("failed to create postgres storage")
+			return
+		}
+		defer stor.Close(ctx)
+		metricsStorage = stor
+		pingStorage = stor
+	}
+
+	metricsUsecase := metrics.New(metricsStorage)
+	pingUsecase := ping.New(pingStorage)
+	router := httprest.NewRouter(metricsUsecase, pingUsecase)
 	server := http.Server{
 		Addr:    conf.address,
 		Handler: router,

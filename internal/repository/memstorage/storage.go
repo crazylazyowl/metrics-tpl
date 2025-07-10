@@ -2,18 +2,22 @@ package memstorage
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/crazylazyowl/metrics-tpl/internal/usecase/metrics"
+	"github.com/crazylazyowl/metrics-tpl/internal/usecase/ping"
+
 	"github.com/rs/zerolog/log"
 )
 
-var _ metrics.MetricsStorage = (*MemStorage)(nil)
+var _ metrics.MetricRegistry = (*MemStorage)(nil)
+var _ ping.Pinger = (*MemStorage)(nil)
 
 type MemStorage struct {
-	counters *counters
-	gauges   *gauges
-	opts     Options
+	m    map[string]metrics.Metric
+	mu   *sync.RWMutex
+	opts Options
 }
 
 type Options struct {
@@ -26,13 +30,13 @@ func New(ctx context.Context, opts Options) (*MemStorage, error) {
 	logger := log.With().Logger()
 
 	storage := &MemStorage{
-		counters: newCounters(),
-		gauges:   newGauges(),
-		opts:     opts,
+		m:    make(map[string]metrics.Metric),
+		mu:   &sync.RWMutex{},
+		opts: opts,
 	}
 
 	if opts.Restore {
-		if err := storage.restoreFromFile(opts.BackupPath); err != nil {
+		if err := storage.restoreFromFile(ctx, opts.BackupPath); err != nil {
 			// NOTE: autotest fails if we return error here
 			// return nil, err
 			// 	suite.envs = append(os.Environ(), []string{
@@ -41,7 +45,7 @@ func New(ctx context.Context, opts Options) (*MemStorage, error) {
 			// 		"STORE_INTERVAL=2",
 			// 		"FILE_STORAGE_PATH=" + flagFileStoragePath,
 			// 	}...)
-			logger.Error().Err(err).Str("path", opts.BackupPath).
+			logger.Warn().Err(err).Str("path", opts.BackupPath).
 				Msg("failed to restore storage from file, starting with empty storage")
 		}
 	}
@@ -51,42 +55,58 @@ func New(ctx context.Context, opts Options) (*MemStorage, error) {
 	return storage, nil
 }
 
-func (s *MemStorage) Close() error {
+func (s *MemStorage) Close(ctx context.Context) error {
 	logger := log.With().Str("path", s.opts.BackupPath).Logger()
 	logger.Debug().Msg("closing storage")
-	return s.dump(s.opts.BackupPath)
+	return s.dump(ctx, s.opts.BackupPath)
 }
 
-func (s *MemStorage) GetCounters() map[string]int64 {
-	return s.counters.Copy()
-}
+func (s *MemStorage) Fetch(ctx context.Context) ([]metrics.Metric, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
-func (s *MemStorage) GetGauges() map[string]float64 {
-	return s.gauges.Copy()
-}
-
-func (s *MemStorage) GetCounter(name string) (int64, error) {
-	value, found := s.counters.Get(name)
-	if !found {
-		return 0, metrics.ErrUnknownMetricID
+	metrics := make([]metrics.Metric, 0, len(s.m))
+	for _, m := range s.m {
+		metrics = append(metrics, m)
 	}
-	return value, nil
+
+	return metrics, nil
 }
 
-func (s *MemStorage) GetGauge(name string) (float64, error) {
-	value, found := s.gauges.Get(name)
-	if !found {
-		return 0, metrics.ErrUnknownMetricID
+func (s *MemStorage) FetchOne(ctx context.Context, m metrics.Metric) (metrics.Metric, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	metric, ok := s.m[m.ID]
+	if !ok {
+		return metrics.Metric{}, metrics.ErrMetricNotFound
 	}
-	return value, nil
+
+	return metric, nil
 }
 
-func (s *MemStorage) UpdateCounter(name string, value int64) error {
-	s.counters.Update(name, value)
+func (s *MemStorage) UpdateOne(ctx context.Context, m metrics.Metric) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	switch m.Type {
+	case metrics.Counter:
+		if _, ok := s.m[m.ID]; !ok {
+			s.m[m.ID] = m
+		} else {
+			*s.m[m.ID].Counter += *m.Counter
+		}
+	case metrics.Gauge:
+		s.m[m.ID] = m
+	}
+
 	return nil
 }
 
-func (s *MemStorage) UpdateGauge(name string, value float64) error {
-	s.gauges.Set(name, value)
-	return nil
+func (s *MemStorage) Ping(ctx context.Context) error {
+	return nil // NOTE: just a stub, isn't used
+}
+
+func (s *MemStorage) Update(ctx context.Context, many []metrics.Metric) error {
+	return nil // NOTE: just a stub, isn't used
 }

@@ -14,6 +14,9 @@ type config struct {
 		backupInterval int
 		backupPath     string
 	}
+	db struct {
+		dsn string
+	}
 }
 
 func (conf *config) Validate() (err error) {
@@ -24,6 +27,8 @@ func (conf *config) Validate() (err error) {
 		err = errors.New("the store interval value can't be 0")
 	case conf.storage.backupPath == "":
 		err = errors.New("the storage backup filepath is not specified")
+		// case conf.db.dns == "":
+		// 	err = errors.New("the database DNS is not specified")
 	}
 	return
 }
@@ -35,6 +40,7 @@ func loadConfig() (conf *config, err error) {
 	flag.IntVar(&conf.storage.backupInterval, "i", 300, "")
 	flag.StringVar(&conf.storage.backupPath, "f", "dump.json", "")
 	flag.BoolVar(&conf.storage.restore, "r", false, "")
+	flag.StringVar(&conf.db.dsn, "d", "", "Database DSN")
 	flag.Parse()
 
 	if value := os.Getenv("ADDRESS"); value != "" {
@@ -57,6 +63,10 @@ func loadConfig() (conf *config, err error) {
 		if err != nil {
 			return
 		}
+	}
+
+	if value := os.Getenv("DATABASE_DSN"); value != "" {
+		conf.db.dsn = value
 	}
 
 	err = conf.Validate()

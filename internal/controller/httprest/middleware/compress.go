@@ -17,6 +17,7 @@ func (w *compressResponseWriter) WriteHeader(status int) {
 	switch w.Header().Get("Content-Type") {
 	case jsonContentType, textHTMLContentType:
 		w.Header().Set("Content-Encoding", "gzip")
+		w.Header().Set("Vary", "Accept-Encoding")
 		w.compressible = true
 	}
 	w.ResponseWriter.WriteHeader(status)

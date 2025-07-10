@@ -1,97 +1,94 @@
 package metrics
 
-type MetricsStorage interface {
-	GetCounter(name string) (int64, error)
-	GetGauge(name string) (float64, error)
-	GetCounters() map[string]int64
-	GetGauges() map[string]float64
-	UpdateCounter(name string, value int64) error
-	UpdateGauge(name string, value float64) error
-}
+import (
+	"context"
+	"time"
 
-type Usecase struct {
-	storage MetricsStorage
-}
-
-func New(repo MetricsStorage) *Usecase {
-	return &Usecase{storage: repo}
-}
-
-const (
-	CounterMetricType = "counter"
-	GaugeMetricType   = "gauge"
+	"github.com/rs/zerolog/log"
 )
 
-type Metrics struct {
-	Counters map[string]int64
-	Gauges   map[string]float64
+type MetricFetcher interface {
+	FetchOne(ctx context.Context, metric Metric) (Metric, error)
+	Fetch(ctx context.Context) ([]Metric, error)
 }
 
-func (u *Usecase) GetMetrics() Metrics {
-	return Metrics{
-		Counters: u.storage.GetCounters(),
-		Gauges:   u.storage.GetGauges(),
-	}
+type MetricUpdater interface {
+	UpdateOne(ctx context.Context, metric Metric) error
+	Update(ctx context.Context, metrics []Metric) error
 }
 
-// GetCounterSum returns the value for the specified counter.
-func (u *Usecase) GetCounterSum(name string) (int64, error) {
-	value, err := u.storage.GetCounter(name)
-	if err != nil {
-		return 0, err
-	}
-	return value, nil
+type MetricRegistry interface {
+	MetricFetcher
+	MetricUpdater
 }
 
-// GetGauge returnes the value for the specified gauge.
-func (u *Usecase) GetGauge(name string) (float64, error) {
-	value, err := u.storage.GetGauge(name)
-	if err != nil {
-		return 0, err
-	}
-	return value, nil
+type MetricUsecase struct {
+	reg MetricRegistry
 }
 
-// GetMetric returns the metric by its ID and type.
-func (u *Usecase) GetMetric(m Metric) (Metric, error) {
-	if m.ID == "" {
-		return Metric{}, ErrEmptyMetricID
+func New(reg MetricRegistry) *MetricUsecase {
+	return &MetricUsecase{reg: reg}
+}
+
+func (u *MetricUsecase) Metric(ctx context.Context, metric Metric) (Metric, error) {
+	if metric.ID == "" {
+		return Metric{}, ErrMetricEmptyID
 	}
-	switch m.Type {
-	case CounterMetricType:
-		value, err := u.storage.GetCounter(m.ID)
-		if err != nil {
-			return Metric{}, err
-		}
-		m.Counter = &value
-	case GaugeMetricType:
-		value, err := u.storage.GetGauge(m.ID)
-		if err != nil {
-			return Metric{}, err
-		}
-		m.Gauge = &value
+	switch metric.Type {
+	case Counter, Gauge:
 	default:
-		return Metric{}, ErrUnknownMetricType
+		return Metric{}, ErrMetricUnknownType
 	}
-	return m, nil
+	return u.reg.FetchOne(ctx, metric)
 }
 
-// UpdateMetric updates the metric value based on its type and name.
-func (u *Usecase) UpdateMetric(m Metric) error {
-	if m.ID == "" {
-		return ErrEmptyMetricID
+func (u *MetricUsecase) Metrics(ctx context.Context) ([]Metric, error) {
+	metrics, err := u.reg.Fetch(ctx)
+	if err != nil {
+		return nil, err
 	}
-	switch m.Type {
-	case CounterMetricType:
-		if m.Counter == nil {
-			return ErrInvalidCounterValue
-		}
-		return u.storage.UpdateCounter(m.ID, *m.Counter)
-	case GaugeMetricType:
-		if m.Gauge == nil {
-			return ErrInvalidGaugeValue
-		}
-		return u.storage.UpdateGauge(m.ID, *m.Gauge)
+	return metrics, nil
+}
+
+func (u *MetricUsecase) UpdateOne(ctx context.Context, metric Metric) error {
+	if err := metric.Validate(); err != nil {
+		return err
 	}
-	return ErrUnknownMetricType
+	var err error
+	logger := log.With().Logger()
+	delay := 1
+	for range 4 {
+		if err = u.reg.UpdateOne(ctx, metric); err != nil {
+			logger.Warn().Err(err).Msgf("retry update one")
+			time.Sleep(time.Duration(delay) * time.Second)
+			delay += 2
+			continue
+		}
+		break
+	}
+	return err
+}
+
+func (u *MetricUsecase) Update(ctx context.Context, metrics []Metric) error {
+	if len(metrics) == 0 {
+		return nil
+	}
+	for _, metric := range metrics {
+		if err := metric.Validate(); err != nil {
+			return err
+		}
+	}
+	logger := log.With().Logger()
+	var err error
+	delay := 1
+	for range 4 {
+		if err = u.reg.Update(ctx, metrics); err != nil {
+			logger.Warn().Err(err).Msgf("retry update many")
+			time.Sleep(time.Duration(delay) * time.Second)
+			delay += 2
+			continue
+		}
+		break
+	}
+	return err
 }
