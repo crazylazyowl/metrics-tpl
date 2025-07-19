@@ -24,7 +24,7 @@ func main() {
 
 	conf, err := loadConfig()
 	if err != nil {
-		logger.Err(err).Msg("faild to load config")
+		logger.Error().Err(err).Msg("faild to load config")
 		return
 	}
 
@@ -42,7 +42,7 @@ func main() {
 			BackupInterval: time.Duration(conf.storage.backupInterval) * time.Second,
 		})
 		if err != nil {
-			logger.Err(err).Msg("failed to create memstorage")
+			logger.Error().Err(err).Msg("failed to create memstorage")
 			return
 		}
 		defer stor.Close(ctx)
@@ -52,7 +52,7 @@ func main() {
 		logger.Debug().Msg("init postgres")
 		stor, err := postgres.NewPostgresStorage(ctx, postgres.Options{DSN: conf.db.dsn, Migrations: "file://migrations"})
 		if err != nil {
-			logger.Err(err).Msg("failed to create postgres storage")
+			logger.Error().Err(err).Msg("failed to create postgres storage")
 			return
 		}
 		defer stor.Close(ctx)
@@ -62,7 +62,10 @@ func main() {
 
 	metricsUsecase := metrics.New(metricsStorage)
 	pingUsecase := ping.New(pingStorage)
-	router := httprest.NewRouter(metricsUsecase, pingUsecase)
+	if conf.key != "" {
+		logger.Debug().Msg("hmac is on")
+	}
+	router := httprest.NewRouter(metricsUsecase, pingUsecase, conf.key)
 	server := http.Server{
 		Addr:    conf.address,
 		Handler: router,

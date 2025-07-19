@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/crazylazyowl/metrics-tpl/internal/security"
 	"github.com/crazylazyowl/metrics-tpl/internal/usecase/metrics"
 )
 
@@ -25,10 +26,13 @@ func main() {
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
-	monitor(ctx, conf.address, conf.pollInterval, conf.reportInterval)
+	monitor(ctx, conf.address, conf.pollInterval, conf.reportInterval, conf.key)
 }
 
-func monitor(ctx context.Context, address string, pollInterval, reportInterval int) error {
+func monitor(ctx context.Context, address string, pollInterval, reportInterval int, key string) error {
+	if key != "" {
+		fmt.Println("hash is on")
+	}
 	gauge := make(map[string]float64)
 	var counter int64
 	// NOTE: hack for second test
@@ -80,15 +84,15 @@ func monitor(ctx context.Context, address string, pollInterval, reportInterval i
 		case <-reportTicker.C:
 			log.Println("send metrics")
 			// many := make([]metrics.Metric, 0, len(gauge)+1)
-			for key, value := range gauge {
+			for name, value := range gauge {
 				metric := metrics.Metric{
-					ID:    key,
+					ID:    name,
 					Type:  metrics.Gauge,
 					Gauge: &value,
 				}
 				// many = append(many, metric)
-				if err := reportOne(address, metric, attempts, delay); err != nil {
-					log.Printf("failed to send %s (%f); err=%v\n", key, value, err)
+				if err := reportOne(address, metric, attempts, delay, key); err != nil {
+					log.Printf("failed to send %s (%f); err=%v\n", name, value, err)
 				}
 			}
 			metric := metrics.Metric{
@@ -96,11 +100,11 @@ func monitor(ctx context.Context, address string, pollInterval, reportInterval i
 				Type:    metrics.Counter,
 				Counter: &counter,
 			}
-			if err := reportOne(address, metric, attempts, delay); err != nil {
+			if err := reportOne(address, metric, attempts, delay, key); err != nil {
 				log.Printf("failed to send %s (%d); err=%v\n", "PollCount", counter, err)
 			}
 			// many = append(many, metric)
-			// if err := reportMany(address, many, attempts, delay); err != nil {
+			// if err := reportMany(address, many, attempts, delay, key); err != nil {
 			// 	log.Printf("failed to bulk metrics; err=%v\n", err)
 			// }
 		}
@@ -117,7 +121,7 @@ func tryPing(address string) error {
 	return nil
 }
 
-func reportMany(address string, mm []metrics.Metric, attempts int, delay int) error {
+func reportMany(address string, mm []metrics.Metric, attempts int, delay int, key string) error {
 	for _, m := range mm {
 		if err := m.Validate(); err != nil {
 			return err
@@ -127,10 +131,10 @@ func reportMany(address string, mm []metrics.Metric, attempts int, delay int) er
 	if err != nil {
 		return err
 	}
-	return report(fmt.Sprintf("http://%s/updates/", address), data, attempts, delay, true)
+	return report(fmt.Sprintf("http://%s/updates/", address), data, attempts, delay, true, key)
 }
 
-func reportOne(address string, m metrics.Metric, attempts int, delay int) error {
+func reportOne(address string, m metrics.Metric, attempts int, delay int, key string) error {
 	if err := m.Validate(); err != nil {
 		return err
 	}
@@ -138,18 +142,22 @@ func reportOne(address string, m metrics.Metric, attempts int, delay int) error 
 	if err != nil {
 		return err
 	}
-	return report(fmt.Sprintf("http://%s/update/", address), data, attempts, delay, false)
+	return report(fmt.Sprintf("http://%s/update/", address), data, attempts, delay, false, key)
 }
 
-func report(url string, data []byte, attempts, delay int, compress bool) error {
+func report(url string, data []byte, attempts, delay int, compress bool, key string) error {
 	var err error
 	if compress {
-		log.Printf("compression is on")
+		log.Println("compression is on")
 		buf := bytes.NewBuffer(nil)
 		w := gzip.NewWriter(buf)
 		w.Write(data)
 		w.Close()
 		data = buf.Bytes()
+	}
+	var digest string
+	if key != "" {
+		digest = security.HMACString([]byte(key), data)
 	}
 	for range attempts {
 		var req *http.Request
@@ -161,6 +169,9 @@ func report(url string, data []byte, attempts, delay int, compress bool) error {
 		req.Header.Add("Content-Type", "application/json")
 		if compress {
 			req.Header.Add("Content-Encoding", "gzip")
+		}
+		if len(digest) != 0 {
+			req.Header.Add("HashSHA256", digest)
 		}
 		resp, err = http.DefaultClient.Do(req)
 		if err != nil {
