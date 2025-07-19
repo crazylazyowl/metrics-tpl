@@ -11,9 +11,10 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func NewRouter(metrics *metrics.MetricUsecase, ping *ping.PingUsecase) http.Handler {
+func NewRouter(metrics *metrics.MetricUsecase, ping *ping.PingUsecase, hmacSecret string) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
+	r.Use(middleware.CheckHMAC(hmacSecret))
 	r.Mount("/", api.NewMetricsRouter(metrics))
 	r.Mount("/ping", api.NewPingRouter(ping))
 	return r

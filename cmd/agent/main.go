@@ -4,9 +4,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -18,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/crazylazyowl/metrics-tpl/internal/security"
 	"github.com/crazylazyowl/metrics-tpl/internal/usecase/metrics"
 )
 
@@ -159,9 +157,7 @@ func report(url string, data []byte, attempts, delay int, compress bool, key str
 	}
 	var digest string
 	if key != "" {
-		h := hmac.New(sha256.New, []byte(key))
-		h.Write(data)
-		digest = hex.EncodeToString(h.Sum(nil))
+		digest = security.HMACString([]byte(key), data)
 	}
 	for range attempts {
 		var req *http.Request
@@ -174,7 +170,7 @@ func report(url string, data []byte, attempts, delay int, compress bool, key str
 		if compress {
 			req.Header.Add("Content-Encoding", "gzip")
 		}
-		if digest != "" {
+		if len(digest) != 0 {
 			req.Header.Add("HashSHA256", digest)
 		}
 		resp, err = http.DefaultClient.Do(req)
