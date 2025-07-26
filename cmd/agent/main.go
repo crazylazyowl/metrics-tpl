@@ -1,19 +1,17 @@
 package main
 
 import (
-	"bytes"
-	"compress/gzip"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"math/rand/v2"
-	"net/http"
 	"os/signal"
 	"runtime"
 	"syscall"
 	"time"
+
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/mem"
 
 	"github.com/crazylazyowl/metrics-tpl/internal/usecase/metrics"
 )
@@ -25,21 +23,22 @@ func main() {
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
-	monitor(ctx, conf.address, conf.pollInterval, conf.reportInterval)
+	monitor(ctx, conf.address, conf.pollInterval, conf.reportInterval, conf.key)
 }
 
-func monitor(ctx context.Context, address string, pollInterval, reportInterval int) error {
+func monitor(ctx context.Context, address string, pollInterval, reportInterval int, key string) error {
+	client := newClient(clientOptions{
+		BaseURL: address,
+		Secret:  key,
+	})
+	client.Hack(ctx)
+
 	gauge := make(map[string]float64)
 	var counter int64
-	// NOTE: hack for second test
-	attempts := 4
-	delay := 1
-	if err := tryPing(address); err != nil {
-		attempts = 1
-		delay = 0
-	}
+
 	pollTicker := time.NewTicker(time.Duration(pollInterval) * time.Second)
 	reportTicker := time.NewTicker(time.Duration(reportInterval) * time.Second)
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -76,19 +75,27 @@ func monitor(ctx context.Context, address string, pollInterval, reportInterval i
 			gauge["Sys"] = float64(ms.Sys)
 			gauge["TotalAlloc"] = float64(ms.TotalAlloc)
 			gauge["RandomValue"] = rand.Float64()
+			vm, _ := mem.VirtualMemory()
+			gauge["TotalMemory"] = float64(vm.Total)
+			gauge["FreeMemory"] = float64(vm.Free)
+			percentages, _ := cpu.Percent(time.Second, true)
+			for i, percent := range percentages {
+				key := fmt.Sprintf("CPUutilization%d", i)
+				gauge[key] = percent
+			}
 			counter++
 		case <-reportTicker.C:
 			log.Println("send metrics")
 			// many := make([]metrics.Metric, 0, len(gauge)+1)
-			for key, value := range gauge {
+			for name, value := range gauge {
 				metric := metrics.Metric{
-					ID:    key,
+					ID:    name,
 					Type:  metrics.Gauge,
 					Gauge: &value,
 				}
 				// many = append(many, metric)
-				if err := reportOne(address, metric, attempts, delay); err != nil {
-					log.Printf("failed to send %s (%f); err=%v\n", key, value, err)
+				if err := client.SendOne(ctx, metric); err != nil {
+					log.Printf("failed to send %s (%f); err=%v\n", name, value, err)
 				}
 			}
 			metric := metrics.Metric{
@@ -96,85 +103,13 @@ func monitor(ctx context.Context, address string, pollInterval, reportInterval i
 				Type:    metrics.Counter,
 				Counter: &counter,
 			}
-			if err := reportOne(address, metric, attempts, delay); err != nil {
+			if err := client.SendOne(ctx, metric); err != nil {
 				log.Printf("failed to send %s (%d); err=%v\n", "PollCount", counter, err)
 			}
 			// many = append(many, metric)
-			// if err := reportMany(address, many, attempts, delay); err != nil {
+			// if err := reportMany(address, many, attempts, delay, key); err != nil {
 			// 	log.Printf("failed to bulk metrics; err=%v\n", err)
 			// }
 		}
 	}
-}
-
-func tryPing(address string) error {
-	url := fmt.Sprintf("http://%s/update/", address)
-	resp, err := http.Head(url)
-	if err != nil {
-		return err
-	}
-	resp.Body.Close()
-	return nil
-}
-
-func reportMany(address string, mm []metrics.Metric, attempts int, delay int) error {
-	for _, m := range mm {
-		if err := m.Validate(); err != nil {
-			return err
-		}
-	}
-	data, err := json.Marshal(mm)
-	if err != nil {
-		return err
-	}
-	return report(fmt.Sprintf("http://%s/updates/", address), data, attempts, delay, true)
-}
-
-func reportOne(address string, m metrics.Metric, attempts int, delay int) error {
-	if err := m.Validate(); err != nil {
-		return err
-	}
-	data, err := json.Marshal(&m)
-	if err != nil {
-		return err
-	}
-	return report(fmt.Sprintf("http://%s/update/", address), data, attempts, delay, false)
-}
-
-func report(url string, data []byte, attempts, delay int, compress bool) error {
-	var err error
-	if compress {
-		log.Printf("compression is on")
-		buf := bytes.NewBuffer(nil)
-		w := gzip.NewWriter(buf)
-		w.Write(data)
-		w.Close()
-		data = buf.Bytes()
-	}
-	for range attempts {
-		var req *http.Request
-		req, err = http.NewRequest(http.MethodPost, url, bytes.NewReader(data))
-		if err != nil {
-			return fmt.Errorf("failed to prepare request; %w", err)
-		}
-		var resp *http.Response
-		req.Header.Add("Content-Type", "application/json")
-		if compress {
-			req.Header.Add("Content-Encoding", "gzip")
-		}
-		resp, err = http.DefaultClient.Do(req)
-		if err != nil {
-			log.Printf("retry report")
-			time.Sleep(time.Duration(delay) * time.Second)
-			delay += 2
-			continue
-		}
-		body, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
-		if resp.StatusCode != 200 {
-			return fmt.Errorf("status code = %d, data = %s", resp.StatusCode, string(body))
-		}
-		break
-	}
-	return err
 }
