@@ -15,6 +15,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/mem"
+
 	"github.com/crazylazyowl/metrics-tpl/internal/security"
 	"github.com/crazylazyowl/metrics-tpl/internal/usecase/metrics"
 )
@@ -80,6 +83,14 @@ func monitor(ctx context.Context, address string, pollInterval, reportInterval i
 			gauge["Sys"] = float64(ms.Sys)
 			gauge["TotalAlloc"] = float64(ms.TotalAlloc)
 			gauge["RandomValue"] = rand.Float64()
+			vm, _ := mem.VirtualMemory()
+			gauge["TotalMemory"] = float64(vm.Total)
+			gauge["FreeMemory"] = float64(vm.Free)
+			percentages, _ := cpu.Percent(time.Second, true)
+			for i, percent := range percentages {
+				key := fmt.Sprintf("CPUutilization%d", i)
+				gauge[key] = percent
+			}
 			counter++
 		case <-reportTicker.C:
 			log.Println("send metrics")
