@@ -108,7 +108,7 @@ func (m *monitor) Start(ctx context.Context, client *client) error {
 				log.Printf("failed to send %s (%d); err=%v\n", "PollCount", counter, err)
 			}
 			// many = append(many, metric)
-			// if err := reportMany(address, many, attempts, delay, key); err != nil {
+			// if err := client.SendMany(ctx, many); err != nil {
 			// 	log.Printf("failed to bulk metrics; err=%v\n", err)
 			// }
 		}

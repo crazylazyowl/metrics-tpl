@@ -66,7 +66,7 @@ func (c *client) SendMany(ctx context.Context, mm []metrics.Metric) error {
 			return err
 		}
 	}
-	data, err := json.Marshal(mm)
+	data, err := json.Marshal(&mm)
 	if err != nil {
 		return err
 	}
@@ -76,7 +76,7 @@ func (c *client) SendMany(ctx context.Context, mm []metrics.Metric) error {
 func (c *client) send(ctx context.Context, endpoint string, compress bool, data []byte) error {
 	if compress {
 		buf := bytes.NewBuffer(nil)
-		w := gzip.NewWriter(nil)
+		w := gzip.NewWriter(buf)
 		w.Write(data)
 		w.Close()
 		data = buf.Bytes()
