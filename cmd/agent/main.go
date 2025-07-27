@@ -27,7 +27,5 @@ func main() {
 		RateLimit:             conf.rateLimit,
 	})
 
-	if err := monitor.Start(ctx, client); err != nil {
-		log.Fatalln(err)
-	}
+	monitor.Start(ctx, client)
 }

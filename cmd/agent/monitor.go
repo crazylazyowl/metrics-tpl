@@ -3,12 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"math/rand/v2"
 	"runtime"
+	"sync"
 	"time"
 
 	"github.com/crazylazyowl/metrics-tpl/internal/usecase/metrics"
+	"github.com/rs/zerolog/log"
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/mem"
 )
@@ -33,84 +34,102 @@ func newMonitor(opts monitorOptions) *monitor {
 	}
 }
 
-func (m *monitor) Start(ctx context.Context, client *client) error {
-	gauge := make(map[string]float64)
-	var counter int64
+func (m *monitor) Start(ctx context.Context, client *client) {
+	mm := m.startMetricsCollector(ctx)
+	wg := m.startMetricsSender(ctx, client, mm)
+	log.Info().Msg("waiting for metrics sender to finish")
+	wg.Wait()
+}
 
-	pollTicker := time.NewTicker(m.pollInterval)
-	reportTicker := time.NewTicker(m.reportInterval)
-
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-pollTicker.C:
-			log.Println("read mem stats")
-			var ms runtime.MemStats
-			runtime.ReadMemStats(&ms)
-			gauge["Alloc"] = float64(ms.Alloc)
-			gauge["BuckHashSys"] = float64(ms.BuckHashSys)
-			gauge["Frees"] = float64(ms.Frees)
-			gauge["GCCPUFraction"] = ms.GCCPUFraction
-			gauge["GCSys"] = float64(ms.GCSys)
-			gauge["HeapAlloc"] = float64(ms.HeapAlloc)
-			gauge["HeapIdle"] = float64(ms.HeapIdle)
-			gauge["HeapInuse"] = float64(ms.HeapInuse)
-			gauge["HeapObjects"] = float64(ms.HeapObjects)
-			gauge["HeapReleased"] = float64(ms.HeapReleased)
-			gauge["HeapSys"] = float64(ms.HeapSys)
-			gauge["LastGC"] = float64(ms.LastGC)
-			gauge["Lookups"] = float64(ms.Lookups)
-			gauge["MCacheInuse"] = float64(ms.MCacheInuse)
-			gauge["MCacheSys"] = float64(ms.MCacheSys)
-			gauge["MSpanInuse"] = float64(ms.MSpanInuse)
-			gauge["MSpanSys"] = float64(ms.MSpanSys)
-			gauge["Mallocs"] = float64(ms.Mallocs)
-			gauge["NextGC"] = float64(ms.NextGC)
-			gauge["NumForcedGC"] = float64(ms.NumForcedGC)
-			gauge["NumGC"] = float64(ms.NumGC)
-			gauge["OtherSys"] = float64(ms.OtherSys)
-			gauge["PauseTotalNs"] = float64(ms.PauseTotalNs)
-			gauge["StackInuse"] = float64(ms.StackInuse)
-			gauge["StackSys"] = float64(ms.StackSys)
-			gauge["Sys"] = float64(ms.Sys)
-			gauge["TotalAlloc"] = float64(ms.TotalAlloc)
-			gauge["RandomValue"] = rand.Float64()
-			vm, _ := mem.VirtualMemory()
-			gauge["TotalMemory"] = float64(vm.Total)
-			gauge["FreeMemory"] = float64(vm.Free)
-			percentages, _ := cpu.Percent(time.Second, true)
-			for i, percent := range percentages {
-				key := fmt.Sprintf("CPUutilization%d", i)
-				gauge[key] = percent
-			}
-			counter++
-		case <-reportTicker.C:
-			log.Println("send metrics")
-			// many := make([]metrics.Metric, 0, len(gauge)+1)
-			for name, value := range gauge {
-				metric := metrics.Metric{
-					ID:    name,
-					Type:  metrics.Gauge,
-					Gauge: &value,
+func (m *monitor) startMetricsCollector(ctx context.Context) chan metrics.Metric {
+	out := make(chan metrics.Metric)
+	go func() {
+		defer close(out)
+		ticker := time.NewTicker(m.pollInterval)
+		defer ticker.Stop()
+		var counter int64
+		mm := make(map[string]metrics.Metric)
+		for {
+			select {
+			case <-ticker.C:
+				counter++
+				mm["PollCount"] = newCounter("PollCount", counter)
+				var memStats runtime.MemStats
+				runtime.ReadMemStats(&memStats)
+				mm["Alloc"] = newGauge("Alloc", float64(memStats.Alloc))
+				mm["BuckHashSys"] = newGauge("BuckHashSys", float64(memStats.BuckHashSys))
+				mm["Frees"] = newGauge("Frees", float64(memStats.Frees))
+				mm["GCCPUFraction"] = newGauge("GCCPUFraction", memStats.GCCPUFraction)
+				mm["GCSys"] = newGauge("GCSys", float64(memStats.GCSys))
+				mm["HeapAlloc"] = newGauge("HeapAlloc", float64(memStats.HeapAlloc))
+				mm["HeapIdle"] = newGauge("HeapIdle", float64(memStats.HeapIdle))
+				mm["HeapInuse"] = newGauge("HeapInuse", float64(memStats.HeapInuse))
+				mm["HeapObjects"] = newGauge("HeapObjects", float64(memStats.HeapObjects))
+				mm["HeapReleased"] = newGauge("HeapReleased", float64(memStats.HeapReleased))
+				mm["HeapSys"] = newGauge("HeapSys", float64(memStats.HeapSys))
+				mm["LastGC"] = newGauge("LastGC", float64(memStats.LastGC))
+				mm["Lookups"] = newGauge("Lookups", float64(memStats.Lookups))
+				mm["MCacheInuse"] = newGauge("MCacheInuse", float64(memStats.MCacheInuse))
+				mm["MCacheSys"] = newGauge("MCacheSys", float64(memStats.MCacheSys))
+				mm["MSpanInuse"] = newGauge("MSpanInuse", float64(memStats.MSpanInuse))
+				mm["MSpanSys"] = newGauge("MSpanSys", float64(memStats.MSpanSys))
+				mm["Mallocs"] = newGauge("Mallocs", float64(memStats.Mallocs))
+				mm["NextGC"] = newGauge("NextGC", float64(memStats.NextGC))
+				mm["NumForcedGC"] = newGauge("NumForcedGC", float64(memStats.NumForcedGC))
+				mm["NumGC"] = newGauge("NumGC", float64(memStats.NumGC))
+				mm["OtherSys"] = newGauge("OtherSys", float64(memStats.OtherSys))
+				mm["PauseTotalNs"] = newGauge("PauseTotalNs", float64(memStats.PauseTotalNs))
+				mm["StackInuse"] = newGauge("StackInuse", float64(memStats.StackInuse))
+				mm["StackSys"] = newGauge("StackSys", float64(memStats.StackSys))
+				mm["Sys"] = newGauge("Sys", float64(memStats.Sys))
+				mm["TotalAlloc"] = newGauge("TotalAlloc", float64(memStats.TotalAlloc))
+				mm["RandomValue"] = newGauge("RandomValue", rand.Float64())
+				virtualMemStats, _ := mem.VirtualMemory()
+				mm["TotalMemory"] = newGauge("TotalMemory", float64(virtualMemStats.Total))
+				mm["FreeMemory"] = newGauge("FreeMemory", float64(virtualMemStats.Free))
+				cpuPercentages, _ := cpu.Percent(time.Second, true)
+				for i, percent := range cpuPercentages {
+					key := fmt.Sprintf("CPUutilization%d", i)
+					mm[key] = newGauge(key, percent)
 				}
-				// many = append(many, metric)
-				if err := client.SendOne(ctx, metric); err != nil {
-					log.Printf("failed to send %s (%f); err=%v\n", name, value, err)
+				for _, m := range mm {
+					out <- m
 				}
+			case <-ctx.Done():
+				return
 			}
-			metric := metrics.Metric{
-				ID:      "PollCount",
-				Type:    metrics.Counter,
-				Counter: &counter,
-			}
-			if err := client.SendOne(ctx, metric); err != nil {
-				log.Printf("failed to send %s (%d); err=%v\n", "PollCount", counter, err)
-			}
-			// many = append(many, metric)
-			// if err := client.SendMany(ctx, many); err != nil {
-			// 	log.Printf("failed to bulk metrics; err=%v\n", err)
-			// }
 		}
+	}()
+	return out
+}
+
+func (m *monitor) startMetricsSender(ctx context.Context, client *client, in chan metrics.Metric) *sync.WaitGroup {
+	wg := &sync.WaitGroup{}
+	for n := range m.rateLimit {
+		wg.Add(1)
+		go func(n int) {
+			defer wg.Done()
+			for {
+				select {
+				case metric := <-in:
+					if err := client.SendOne(ctx, metric); err != nil {
+						log.Error().Err(err).Msg("failed to send metric")
+					}
+				case <-ctx.Done():
+					return
+				}
+			}
+		}(n)
 	}
+	return wg
+}
+
+func newCounter(id string, n int64) metrics.Metric {
+	value := n
+	return metrics.Metric{ID: id, Type: metrics.Counter, Counter: &value}
+}
+
+func newGauge(id string, n float64) metrics.Metric {
+	value := n
+	return metrics.Metric{ID: id, Type: metrics.Gauge, Gauge: &value}
 }
