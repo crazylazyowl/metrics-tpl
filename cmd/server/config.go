@@ -9,6 +9,7 @@ import (
 
 type config struct {
 	address string
+	key     string
 	storage struct {
 		restore        bool
 		backupInterval int
@@ -37,6 +38,7 @@ func loadConfig() (conf *config, err error) {
 	conf = &config{}
 
 	flag.StringVar(&conf.address, "a", "localhost:8080", "")
+	flag.StringVar(&conf.key, "k", "", "Secret key for HMAC")
 	flag.IntVar(&conf.storage.backupInterval, "i", 300, "")
 	flag.StringVar(&conf.storage.backupPath, "f", "dump.json", "")
 	flag.BoolVar(&conf.storage.restore, "r", false, "")
@@ -45,6 +47,10 @@ func loadConfig() (conf *config, err error) {
 
 	if value := os.Getenv("ADDRESS"); value != "" {
 		conf.address = value
+	}
+
+	if value := os.Getenv("KEY"); value != "" {
+		conf.key = value
 	}
 
 	if value := os.Getenv("STORE_INTERVAL"); value != "" {
