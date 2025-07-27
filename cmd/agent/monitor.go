@@ -35,23 +35,31 @@ func newMonitor(opts monitorOptions) *monitor {
 }
 
 func (m *monitor) Start(ctx context.Context, client *client) {
-	mm := m.startMetricsCollector(ctx)
-	wg := m.startMetricsSender(ctx, client, mm)
-	log.Info().Msg("waiting for metrics sender to finish")
+	tasks := m.startMetricsCollector(ctx)
+	wg := m.startMetricsSender(ctx, client, tasks)
+	log.Debug().Msg("waiting for workers to finish")
 	wg.Wait()
 }
 
 func (m *monitor) startMetricsCollector(ctx context.Context) chan metrics.Metric {
 	out := make(chan metrics.Metric)
+
 	go func() {
-		defer close(out)
+		defer func() {
+			log.Debug().Msg("close metrics collector output channel")
+			close(out)
+		}()
+
 		ticker := time.NewTicker(m.pollInterval)
 		defer ticker.Stop()
+
 		var counter int64
 		mm := make(map[string]metrics.Metric)
+
 		for {
 			select {
 			case <-ticker.C:
+				log.Debug().Msg("collecting metrics")
 				counter++
 				mm["PollCount"] = newCounter("PollCount", counter)
 				var memStats runtime.MemStats
@@ -96,6 +104,7 @@ func (m *monitor) startMetricsCollector(ctx context.Context) chan metrics.Metric
 					out <- m
 				}
 			case <-ctx.Done():
+				log.Debug().Msg("context done, stopping metrics collector")
 				return
 			}
 		}
@@ -108,6 +117,7 @@ func (m *monitor) startMetricsSender(ctx context.Context, client *client, in cha
 	for n := range m.rateLimit {
 		wg.Add(1)
 		go func(n int) {
+			log.Debug().Msgf("starting metric sender %d", n)
 			defer wg.Done()
 			for {
 				select {
@@ -116,6 +126,7 @@ func (m *monitor) startMetricsSender(ctx context.Context, client *client, in cha
 						log.Error().Err(err).Msg("failed to send metric")
 					}
 				case <-ctx.Done():
+					log.Debug().Msg("context done, stopping metric sender")
 					return
 				}
 			}
